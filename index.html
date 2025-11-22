@@ -583,7 +583,7 @@
           id: "C" + i,
           type: "citizen",
           tileIndex: randInt(NUM_TILES),
-          infected: false
+          infected: false,
           infectedTurn: null, 
           recovered: false
         });
@@ -1000,12 +1000,13 @@
       stepMovement();
       openChestsByPlayers();
       const newInf = stepInfection();
+      stepRecovery();
 
       function stepRecovery() {
         const RECOVERY_TURNS = 4;
 
         for (const e of GameState.entities) {
-          if (!e.type === "citizen") continue;
+          if (e.type !== "citizen") continue;
           if (!e.infected) continue;
           if (e.recovered) continue;      // 이미 회복된 경우 패스
 
@@ -1066,6 +1067,7 @@
   </script>
 </body>
 </html>
+
 
 
 
