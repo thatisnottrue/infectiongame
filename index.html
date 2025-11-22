@@ -360,7 +360,7 @@
       BASE_INFECTION_RATE: 0.8,   // 시민 감염 기본 80%
       PLAYER_BASE_RATE: 1.0,      // 감염된 플레이어 → 시민 감염 시도 확률
       VACCINE_REDUCTION_FACTOR: 0.05, // 백신 후 감염률 95% 감소
-      CHESTS_REQUIRED_FOR_VACCINE: 5,
+      CHESTS_REQUIRED_FOR_VACCINE: 1,
       RECOVERY_TURNS: 4
     };
 
@@ -759,6 +759,85 @@
       }
     }
 
+    function stepPlayerAutoMovement() {
+      const state = GameState;
+      const chestTiles = Array.from(state.activeChestTiles);
+      if (chestTiles.length === 0) return;
+      const N = GameConfig.NUM_TILES;
+      const dist = new Array(N).fill(Infinity);
+      const queue = [];
+      for (const t of chestTiles) {
+        dist[t] = 0;
+        queue.push(t);
+      }
+
+      while (queue.length > 0) {
+        const cur = queue.shift();
+        const nd = dist[cur] + 1;
+        const neighbors = getNeighborIndices(cur);
+        for (const nb of neighbors) {
+          if (nd < dist[nb]) {
+            dist[nb] = nd;
+            queue.push(nb);
+          }
+        }
+      }
+
+      const tileCitizenInfo = [...Array(N)].map(() => ({
+        unvaccinated: 0,
+        vaccinated: 0
+      }));
+
+      for (const e of state.entities) {
+        if (e.type !== "citizen") continue;
+        const info = tileCitizenInfo[e.tileIndex];
+        if (e.vaccinated) info.vaccinated++;
+        else info.unvaccinated++;
+      }
+      for (const p of state.entities) {
+        if (p.type !== "player") continue;
+        if (p.infected) continue; // 감염자는 자동 이동 없음
+        const cur = p.tileIndex;
+        if (state.activeChestTiles.has(cur)) continue;
+        const neighbors = getNeighborIndices(cur);
+        if (neighbors.length === 0) continue;
+        if (!p.vaccinated) {
+          let best = null;
+          let bestDist = dist[cur];
+
+          for (const nb of neighbors) {
+            if (dist[nb] < bestDist) {
+              bestDist = dist[nb];
+              best = nb;
+            }
+          }
+
+          if (best !== null && bestDist < Infinity) {
+            p.tileIndex = best;
+            state.playersMovedThisTurn.add(p.id);
+          }
+          continue;
+        }
+        let bestNb = null;
+        let maxUnvaccinated = 0;
+        for (const nb of neighbors) {
+          const u = tileCitizenInfo[nb].unvaccinated;
+          if (u > maxUnvaccinated) {
+            maxUnvaccinated = u;
+            bestNb = nb;
+          }
+        }
+
+        if (bestNb !== null && maxUnvaccinated > 0) {
+          p.tileIndex = bestNb;
+          state.playersMovedThisTurn.add(p.id);
+          continue;
+        }
+
+        const r = neighvors[randInt(neighbors.length)];
+      }
+    }
+
     function stepInfection() {
       const {
         NUM_TILES,
@@ -1091,12 +1170,13 @@
 
       spawnChestsIfNeeded();
       stepMovement();
+      stepPlayerAutoMovement(); 
       openChestsByPlayers();
       spreadVaccineFromPlayers();
       const prevInfected = computeInfectedCount()
       const newInf = stepInfection();
-      GameState.cumulativeInfectedTotal += newInf;   // ★ 추가됨
-
+      GameState.cumulativeInfectedTotal += newInf;
+      
       GameState.historyNewInfected.push({
         turn: state.currentTurn,
         newInfected: newInf
@@ -1150,6 +1230,7 @@
   </script>
 </body>
 </html>
+
 
 
 
