@@ -413,6 +413,10 @@
       tileElements: [],      // [index] -> { path, overlay, pop, inf, ply, pieces }
       tileCenters: [],       // [index] -> { x, y }
       neighborMap: []        // [index] -> [neighborIndex ...]
+
+      // ★ 서버(교사)에서 받은 요약값 저장용
+      remoteInfectedTotal: null,
+      remoteTileStats: null
     };
 
     // =========================
@@ -1091,12 +1095,66 @@
       }
     }
 
+    // 교사 쪽에서 매 턴 끝나고 타일 요약 정보 만드는 함수
+    function computeTileStats() {
+      const { NUM_TILES } = GameConfig;
+      const state = GameState;
+
+      // 타일별 기본 구조
+      const tiles = [...Array(NUM_TILES)].map(() => ({
+        total: 0,
+        infected: 0,
+        vaccinatedCitizens: 0,
+        hasChest: false
+      });
+
+      // 시민/플레이어로부터 통계 쌓기
+      for (const e of state.entities) {
+        const t = tiles[e.tileIndex];
+        t.total++;
+        if (e.infected) t.infected++;
+
+        if (e.type === "citizen" && e.vaccinated) {
+          t.vaccinatedCitizens++;
+        }
+      }
+
+      // 보물상자 위치 표시
+      state.activeChestTiles.forEach(idx => {
+        if (tiles[idx]) tiles[idx].hasChest = true;
+      });
+
+      return tiles;
+    }
+
     // =========================
     // 9. 렌더링
     // =========================
     function renderTiles() {
       const { NUM_TILES } = GameConfig;
       const state = GameState;
+
+      let tiles;
+      let tileEntities;
+
+      // =========================
+      // 1) 학생 모드: 서버가 준 타일 요약값 사용
+      // =========================
+      if (NetState.roomId && !NetState.isTeacher && state.remoteTileStats) {
+        tiles = state.remoteTileStats;
+
+        // 학생은 시민 상태를 로컬에서 안 쓰고, 플레이어 말 표시만 필요
+        tileEntities = [...Array(NUM_TILES)].map(() => ({
+          players: [],
+          citizens: []
+        }));
+
+        for (const e of state.entities) {
+          if (e.type === "player") {
+            tileEntities[e.tileIndex].players.push(e);
+          }
+        }
+      }
 
       const tiles = [...Array(NUM_TILES)].map(() => ({
         total: 0,
@@ -1108,6 +1166,8 @@
         players: [],
         citizens: []
       }));
+
+      // 2) 교사/싱글 모드: 기존 방식 그대로
 
       for (const e of state.entities) {
         const t = tiles[e.tileIndex];
@@ -1125,65 +1185,70 @@
         }
       }
 
-      for (let i = 0; i < NUM_TILES; i++) {
-        const t = tiles[i];
-        const el = state.tileElements[i];
-        if (!el) continue;
+      // 교사 쪽에서도 hasChest 플래그 세팅
+      state.activeChestTiles.forEach(idx => {
+        if (tiles[idx]) tiles[idx].hasChest = true;
+      });
+    }
 
-        el.pop.textContent = t.total;
+    // 3) 실제 렌더링
 
-        const hasChest =
-          state.vaccineFeatureEnabled && state.activeChestTiles.has(i);
+    for (let i = 0; i < NUM_TILES; i++) {
+      const t = tiles[i];
+      const el = state.tileElements[i];
+      if (!el) continue;
 
-        // SVG 타일 색칠
-        if (hasChest) {
-          el.path.style.fill = "rgba(200, 220, 255, 0.9)";
+      el.pop.textContent = t.total;
+
+      const hasChest =
+        state.vaccineFeatureEnabled && !!t.hasChest;
+
+      // SVG 타일 색칠
+      if (hasChest) {
+        el.path.style.fill = "rgba(200, 220, 255, 0.9)";
+      } else {
+        const infratio = t.total > 0 ? t.infected / t.total : 0;
+        const vacRatio = t.total > 0 ? t.vaccinatedCitizens / t.total : 0;
+        
+        let baseR, baseG, baseB;
+        if (infratio === 0) {
+          baseR = 250;
+          baseG = 250;
+          baseB = 250;
         } else {
-          const infratio = t.total > 0 ? t.infected / t.total : 0;
-          const vacRatio = t.total > 0 ? t.vaccinatedCitizens / t.total : 0;
-          let baseR, baseG, baseB;
-          if (infratio === 0) {
-            baseR = 250;
-            baseG = 250;
-            baseB = 250;
-          } else {
-            baseR = 255;
-            baseG = Math.round(250 * (1 - infratio));
-            baseB = Math.round(250 * (1 - infratio));
-          }
-
-          const vaccineR = 0;
-          const vaccineG = 220;
-          const vaccineB = 0;
-
-          const alpha = vacRatio; // 0 ~ 1 : 백신 비율이 곧 섞는 비율
-
-          const r = Math.round(baseR * (1 - alpha) + vaccineR * alpha);
-          const g = Math.round(baseG * (1 - alpha) + vaccineG * alpha);
-          const b = Math.round(baseB * (1 - alpha) + vaccineB * alpha);
-
-          el.path.style.fill = `rgb(${r}, ${g}, ${b})`;
+          baseR = 255;
+          baseG = Math.round(250 * (1 - infratio));
+          baseB = Math.round(250 * (1 - infratio));
         }
 
-        // 말(토큰) 표시
-        const pieceContainer = el.pieces;
-        pieceContainer.innerHTML = "";
+        const vaccineR = 0;
+        const vaccineG = 220;
+        const vaccineB = 0;
 
-        const playersHere = tileEntities[i].players;
-        pieceContainer.innerHTML = "";
+        const alpha = vacRatio; // 0 ~ 1 : 백신 비율이 곧 섞는 비율
 
-        playersHere.forEach(p => {
-          const d = document.createElement("div");
-          if (p.vaccinated) {
-            d.className = "piece vaccinated";
-          } else {
-            d.className =
-              "piece player" + (p.infected ? " infected" : "");
-          }
+        const r = Math.round(baseR * (1 - alpha) + vaccineR * alpha);
+        const g = Math.round(baseG * (1 - alpha) + vaccineG * alpha);
+        const b = Math.round(baseB * (1 - alpha) + vaccineB * alpha);
 
+        el.path.style.fill = `rgb(${r}, ${g}, ${b})`;
+      }
+
+      // 말(토큰) 표시
+      const pieceContainer = el.pieces;
+      pieceContainer.innerHTML = "";
+
+      const playersHere = tileEntities[i].players;
+      playersHere.forEach(p => {
+        const d = document.createElement("div");
+        if (p.vaccinated) {
+          d.className = "piece vaccinated";
+        } else {
+          d.className =
+            "piece player" + (p.infected ? " infected" : "");
+        }
           pieceContainer.appendChild(d);
         });
-
       }
     }
 
@@ -1217,8 +1282,17 @@
 
     function renderStats() {
       const state = GameState;
-      const inf = computeInfectedCount();
       const total = GameConfig.NUM_CITIZENS + GameConfig.NUM_PLAYERS;
+
+      let inf;
+
+      // 학생 모드: 서버에서 받은 감염 수 사용
+      if (NetState.roomId && !NetState.isTeacher && state.remoteInfectedTotal != null) {
+        inf = state.remoteInfectedTotal;
+      } else {
+        // 교사/싱글 모드: 로컬 계산
+        inf = computeInfectedCount();
+      }
 
       UI.statInfected.textContent = inf;
       UI.statRatio.textContent = Math.round((inf / total) * 100) + "%";
@@ -1235,13 +1309,16 @@
           : "개발 전";
       }
 
-      if (state.lastRecordedTurn !== state.currentTurn) {
-        state.historyCumulativeInfected.push({
-          turn: state.currentTurn,
-          infected: state.cumulativeInfectedTotal   // ★ 누적 감염자 수 기록
-        });
-        state.lastRecordedTurn = state.currentTurn;
-        updateInfectedHistory();
+      // 교사/싱글 모드에서만 히스토리 배열에 새 항목 추가
+      if (!(NetState.roomId && !NetState.isTeacher)) {
+        if (state.lastRecordedTurn !== state.currentTurn) {
+          state.historyCumulativeInfected.push({
+            turn: state.currentTurn,
+            infected: state.cumulativeInfectedTotal 
+          });
+          state.lastRecordedTurn = state.currentTurn;
+          updateInfectedHistory();
+        }
       }
     }
 
@@ -1341,7 +1418,10 @@
           turn: state.currentTurn,
           vaccineReady: state.vaccineActive,
           openedChests: state.openedChestCount,
-          infectedTotal: inf
+          infectedTotal: inf,
+          cumulativeHistory: state.historyCumulativeInfected,
+          newHistory: state.historyNewInfected,
+          tiles: tileStats
         });
 
         // /rooms/{roomId}/players/{playerId} 위치/상태 동기화
@@ -1461,13 +1541,37 @@
         // 교사는 자기 로컬 state가 진짜라서, DB 값으로 덮어쓰지 않음
         if (NetState.isTeacher) return;
 
-        // 학생은 DB의 state를 따라감
+        // 기본 턴/백신/상자 정보
         GameState.currentTurn      = s.turn ?? GameState.currentTurn;
         GameState.openedChestCount = s.openedChests ?? GameState.openedChestCount;
         GameState.vaccineActive    = !!s.vaccineReady;
 
-        // 감염 총합 같은 것도 저장해두고 싶으면 여기서 사용 가능
-        // GameState.cumulativeInfectedTotal = s.infectedTotal ?? GameState.cumulativeInfectedTotal;
+        // 서버에서 보낸 감염 총합
+        GameState.remoteInfectedTotal = s.infectedTotal ?? null;
+
+        // 히스토리(누적/신규)
+        if (Array.isArray(s.cumulativeHistory)) {
+          GameState.historyCumulativeInfected = s.cumulativeHistory;
+        }
+        if (Array.isArray(s.newHistory)) {
+          GameState.historyNewInfected = s.newHistory;
+        }
+
+        // 타일 요약 정보
+        if (Array.isArray(s.tiles)) {
+          GameState.remoteTileStats = s.tiles;
+
+          // 상자 위치도 여기서 세트로 재구성
+          const chestSet = new Set();
+          s.tiles.forEach((t, idx) => {
+            if (t && t.hasChest) chestSet.add(idx);
+          });
+          GameState.activeChestTiles = chestSet;
+        }
+
+        // 히스토리 박스 다시 그리기
+        updateInfectedHistory();
+        updateNewInfectedHistory();
 
         renderAll();
         updateSelectedPlayerInfo();
@@ -1554,6 +1658,7 @@
   </script>
 </body>
 </html>
+
 
 
 
