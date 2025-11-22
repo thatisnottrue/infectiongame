@@ -1589,6 +1589,7 @@
       if (!NetState.playersRef) return;
 
       NetState.playersRef.on("value", snapshot => {
+        if (NetState.isTeacher) return;
         const playersObj = snapshot.val() || {};
         const allPlayers = GameState.entities.filter(e => e.type === "player");
 
@@ -1670,6 +1671,7 @@
   </script>
 </body>
 </html>
+
 
 
 
