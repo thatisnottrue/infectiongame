@@ -365,7 +365,11 @@
       apiKey: "AIzaSyD78qp_t_LZnXEnPHnKoaXB9RYLIsu82K4",
       authDomain: ""infectiongametest.firebaseapp.com"",
       databaseURL: "https://infectiongametest-default-rtdb.firebaseio.com",
-      projectId: "infectiongametest",
+      projectId: "infectiongametest"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const rtdb = firebase.database();
       
     // =========================
     // 1. 설정 (Config)
@@ -1492,8 +1496,9 @@
     }
 
     
-    function init() {
-      loadSVGMap().then(() => {
+    async function init() {
+      await loadSVGMap();   // SVG 로드 끝날 때까지 기다림
+      
         // SVG 로드 → 타일/이웃 설정 완료 후 엔티티 초기화
         initEntities();
         renderAll();
@@ -1546,6 +1551,7 @@
   </script>
 </body>
 </html>
+
 
 
 
