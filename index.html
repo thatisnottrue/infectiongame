@@ -593,6 +593,11 @@
       for (const e of state.entities) {
         if (e.type === "player" && e.vaccinated) {
           vaccinatedTiles.add(e.tileIndex);
+
+          const neighbors = getNeighborIndices(e.tileIndex);
+          for (const n of neighbors) {
+            vaccinatedTiles.add(n);
+          }
         }
       }
       if (vaccinatedTiles.size === 0) return;
@@ -1230,6 +1235,7 @@
   </script>
 </body>
 </html>
+
 
 
 
