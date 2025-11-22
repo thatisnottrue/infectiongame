@@ -499,9 +499,6 @@
             overlay.dataset.tileIndex = i;
 
             overlay.innerHTML = `
-              <div class="tile-top">
-                <span>#${i}</span>
-              </div>
               <div class="tile-bottom">
                 <div><span class="label">인구:</span> <span class="pop">0</span></div>
                 <div><span class="label">감염:</span> <span class="inf">0</span></div>
@@ -527,7 +524,6 @@
               overlay,
               pop: overlay.querySelector(".pop"),
               inf: overlay.querySelector(".inf"),
-              ply: overlay.querySelector(".ply"),
               pieces: overlay.querySelector(".tile-pieces")
             };
           }
@@ -893,7 +889,6 @@
 
         el.pop.textContent = t.total;
         el.inf.textContent = t.infected;
-        el.ply.textContent = t.players;
 
         const hasChest =
           state.vaccineFeatureEnabled && state.activeChestTiles.has(i);
@@ -1061,3 +1056,4 @@
   </script>
 </body>
 </html>
+
