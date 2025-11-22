@@ -1604,10 +1604,16 @@
             return;
           }
 
-          p.tileIndex  = remote.tileIndex ?? p.tileIndex;
-          p.infected   = !!remote.infected;
-          p.vaccinated = !!remote.vaccinated;
+          // ✅ 학생/교사(사람이 조종하는 클라이언트)는
+          //    서버의 위치를 신뢰해야 하는 쪽만 타일 위치를 덮어쓴다.
+          if (!NetState.isTeacher) {
+            // 학생 클라이언트는 서버 값으로 동기화
 
+            p.tileIndex  = remote.tileIndex ?? p.tileIndex;
+            p.infected   = !!remote.infected;
+            p.vaccinated = !!remote.vaccinated;
+          }
+  
           // ★ role 보고 사람 말인지 표시
           p.isHuman = remote.role === "student" || remote.role === "teacher";
         });
@@ -1672,6 +1678,7 @@
   </script>
 </body>
 </html>
+
 
 
 
