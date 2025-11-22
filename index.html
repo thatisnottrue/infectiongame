@@ -174,21 +174,19 @@
       gap: 2px;
     }
     .piece {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      border: 1px solid rgba(0, 0, 0, 0.2);
+      width: 20px;
+      height: 20px;
       box-sizing: border-box;
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      border: none;
     }
     .piece.player {
-      background: #4a6fff;
-    }
-    .piece.citizen {
-      background: #999999;
+      background-image: url("./assets/player-normal.svg");
     }
     .piece.infected {
-      background: #ff4a4a;
-      box-shadow: 0 0 0 2px rgba(255, 0, 0, 0.5);
+      background-image: url("./assets/player-infected.svg");
     }
 
     .side-panel {
@@ -1047,6 +1045,7 @@
   </script>
 </body>
 </html>
+
 
 
 
