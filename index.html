@@ -957,7 +957,7 @@
     // 10. SVG 맵 로드
     // =========================
     function loadSVGMap() {
-      fetch("./map.svg")
+      fetch("./assets/map.svg")
         .then(res => res.text())
         .then(svgText => {
           UI.svgMapContainer.insertAdjacentHTML("afterbegin", svgText);
@@ -1043,4 +1043,5 @@
   </script>
 </body>
 </html>
+
 
