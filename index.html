@@ -838,30 +838,6 @@
       }
     }
 
-
-//// 의심지역
-      for (const e of state.entities) {
-        if (e.type !== "player") continue;
-        if (e.infected) continue;
-        const curIndex = e.tileIndex;
-        if (state.activeChestTiles.has(curIndex)) continue;
-        const neighbors = getNeighborIndices(curIndex);
-        if (neighbors.length === 0) continue;
-        let bestNeighbor = null;
-        let bestDist = dist[curIndex];
-        for (const nb of neighbors) {
-          if (dist[nb] < bestDist) {
-            bestDist = dist[nb];
-            bestNeighbor = nb;
-          }
-        }
-        if (bestNeighbor !== null && bestDist < Infinity) {
-          e.tileIndex = bestNeighbor;
-          state.playersMovedThisTurn.add(e.id);
-        }
-      }
-    }
-
     function stepInfection() {
       const {
         NUM_TILES,
@@ -1254,6 +1230,7 @@
   </script>
 </body>
 </html>
+
 
 
 
