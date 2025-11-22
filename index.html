@@ -1060,14 +1060,14 @@
           const infratio = t.total > 0 ? t.infected / t.total : 0;
           const vacRatio = t.total > 0 ? t.vaccinatedCitizens / t.total : 0;
           let baseR, baseG, baseB;
-          if (infRatio === 0) {
+          if (infratio === 0) {
             baseR = 250;
             baseG = 250;
             baseB = 250;
           } else {
             baseR = 255;
-            baseG = Math.round(250 * (1 - infRatio));
-            baseB = Math.round(250 * (1 - infRatio));
+            baseG = Math.round(250 * (1 - infratio));
+            baseB = Math.round(250 * (1 - infratio));
           }
 
           const vaccineR = 0;
@@ -1257,6 +1257,7 @@
   </script>
 </body>
 </html>
+
 
 
 
