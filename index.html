@@ -364,6 +364,7 @@
     const GameState = {
       currentTurn: 1,
       entities: [],
+      cumulativeInfectedTotal: 0, // 수정 누적 감염자 수
 
       historyCumulativeInfected: [],
       lastRecordedTurn: 0,
@@ -984,7 +985,7 @@
       if (state.lastRecordedTurn !== state.currentTurn) {
         state.historyCumulativeInfected.push({
           turn: state.currentTurn,
-          infected: inf
+          infected: state.cumulativeInfectedTotal // ← 누적 감염
         });
         state.lastRecordedTurn = state.currentTurn;
         updateInfectedHistory();
@@ -1031,6 +1032,8 @@
       renderAll();
       updateSelectedPlayerInfo();
       addLog(`새 감염자 ${newInf}명`);
+      const newInf = stepInfection(); // 수정 누적감염
+      GameState.cumulativeInfectedTotal += newInf; // 수정 누적감
     }
 
     // =========================
@@ -1074,6 +1077,7 @@
   </script>
 </body>
 </html>
+
 
 
 
