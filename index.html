@@ -909,23 +909,14 @@
         pieceContainer.innerHTML = "";
 
         const playersHere = tileEntities[i].players;
-        const citizensHere = tileEntities[i].citizens;
 
-        const maxPiecesPerType = 3;
-
-        playersHere.slice(0, maxPiecesPerType).forEach(p => {
+        playersHere.forEach(p => {
           const d = document.createElement("div");
           d.className =
             "piece player" + (p.infected ? " infected" : "");
           pieceContainer.appendChild(d);
         });
 
-        citizensHere.slice(0, maxPiecesPerType).forEach(c => {
-          const d = document.createElement("div");
-          d.className =
-            "piece citizen" + (c.infected ? " infected" : "");
-          pieceContainer.appendChild(d);
-        });
       }
     }
 
@@ -1056,4 +1047,5 @@
   </script>
 </body>
 </html>
+
 
