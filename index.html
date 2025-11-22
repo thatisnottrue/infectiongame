@@ -723,7 +723,7 @@
         if (e.type !== "citizen") continue;
 
         // 이동 확률을 줄여서 "퍼져나가는" 느낌 강화 (30%만 이동)
-        if (Math.random() < 0.3) {
+        if (Math.random() < 0.7) {
           const nei = getNeighborIndices(e.tileIndex);
           if (nei.length > 0) e.tileIndex = nei[randInt(nei.length)];
         }
@@ -1107,6 +1107,7 @@
   </script>
 </body>
 </html>
+
 
 
 
