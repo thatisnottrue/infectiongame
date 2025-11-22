@@ -780,6 +780,7 @@
             const target = healthy[idx];
             if (!target.infected && !target.recovered && Math.random() < citizenRate) {
               target.infected = true;
+              target.infectedTurn = GameState.currentTurn;
               newInf++;
             }
             healthy.splice(idx, 1);
@@ -787,6 +788,32 @@
         }
       }
       return newInf;
+    }
+
+    // ★★★ 여기 새로 추가 ★★★
+    function stepRecovery() {
+      const RECOVERY_TURNS = 4;
+
+      for (const e of GameState.entities) {
+        // 시민만 회복 대상으로
+        if (e.type !== "citizen") continue;
+
+        // 아직 감염 중인 시민만
+        if (!e.infected) continue;
+
+        // 이미 회복 판정된 시민은 스킵
+        if (e.recovered) continue;
+
+        // 감염된 지 4턴 이상 지났으면 회복
+        if (
+          e.infectedTurn !== null &&
+          GameState.currentTurn - e.infectedTurn >= RECOVERY_TURNS
+        ) {
+          e.infected = false;
+          e.recovered = true;   // 재감염 방지 플래그
+          e.infectedTurn = null;
+        }
+      }
     }
 
     function spawnChestsIfNeeded() {
@@ -1047,6 +1074,7 @@
   </script>
 </body>
 </html>
+
 
 
 
