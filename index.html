@@ -798,6 +798,7 @@
           const idx = randInt(healthy.length);
           const target = healthy[idx];
           const susceptibility = target.vaccinated ? VACCINE_REDUCTION_FACTOR : 1;
+          const infectionProb = playerRate * susceptibility;
           if (!target.infected && Math.random() < playerRate) {
             target.infected = true;
             target.infectedTurn = GameState.currentTurn;
@@ -813,7 +814,9 @@
             if (healthy.length === 0) break;
             const idx = randInt(healthy.length);
             const target = healthy[idx];
-            if (!target.infected && !target.recovered && Math.random() < citizenRate) {
+            const susceptibility = target.vaccinated ? VACCINE_REDUCTION_FACTOR : 1;
+            const infectionProb = citizenRate * susceptibility;
+            if (!target.infected && !target.recovered && Math.random() < infectionProb) {
               target.infected = true;
               target.infectedTurn = GameState.currentTurn;
               newInf++;
@@ -1147,6 +1150,7 @@
   </script>
 </body>
 </html>
+
 
 
 
