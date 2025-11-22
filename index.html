@@ -327,6 +327,11 @@
             <div>아직 데이터가 없습니다.</div>
           </div>
 
+          <div class="stat-history" id="newInfectedHistoryBox">
+            <div><b>턴별 신규 감염자 수 (기록용)</b></div>
+            <div>아직 데이터가 없습니다.</div>
+          </div>
+
           <div id="selectedPlayerInfo" style="margin-top:6px; font-size:0.78rem;">
             선택된 플레이어: 없음 (타일을 클릭해서 플레이어 선택/이동)
           </div>
@@ -367,8 +372,9 @@
       entities: [],
 
       historyCumulativeInfected: [],
+      historyNewInfected: [],
       lastRecordedTurn: 0,
-      cumulativeInfectedTotal: 0, // ★ 추가됨
+      cumulativeInfectedTotal: 0,
 
       activeChestTiles: new Set(),
       chestWave: 0,
@@ -401,6 +407,7 @@
       statOpenedChests: document.getElementById("statOpenedChests"),
       statVaccineStatus: document.getElementById("statVaccineStatus"),
       infectedHistoryBox: document.getElementById("infectedHistoryBox"),
+      newInfectedHistoryBox: document.getElementById("newInfectedHistoryBox"),
       vaccineToggle: document.getElementById("vaccineToggle"),
       selectedPlayerInfo: document.getElementById("selectedPlayerInfo"),
       addDummyLogBtn: document.getElementById("addDummyLogBtn"),
@@ -962,6 +969,20 @@
       UI.infectedHistoryBox.innerHTML = html;
     }
 
+    function updateNewInfectedHistory() {
+      const hist = GameState.historyNewInfected;
+      if (hist.length === 0) {
+        UI.newInfectedHistoryBox.innerHTML =
+          "<div><b>턴별 신규 감염자 수 (기록용)</b></div><div>아직 데이터가 없습니다.</div>";
+        return;
+      }
+      let html = "<div><b>턴별 신규 감염자 수 (기록용)</b></div>";
+      for (const h of hist) {
+        html += `<div>T${h.turn}: ${h.newInfected}명</div>`;
+      }
+      UI.newInfectedHistoryBox.innerHTML = html;
+    }
+
     function renderStats() {
       const state = GameState;
       const inf = computeInfectedCount();
@@ -1004,7 +1025,9 @@
       const state = GameState;
       state.currentTurn = 1;
       state.historyCumulativeInfected = [];
+      state.historyNewInfected = [];
       state.lastRecordedTurn = 0;
+      state.cumulativeInfectedTotal = 0;
       state.activeChestTiles = new Set();
       state.chestWave = 0;
       state.openedChestCount = 0;
@@ -1017,6 +1040,7 @@
       initEntities();
       renderAll();
       addInitialLog();
+      updateNewInfectedHistory();
     }
 
     function nextTurn() {
@@ -1028,8 +1052,13 @@
       stepMovement();
       openChestsByPlayers();
       const newInf = stepInfection();
-      
       GameState.cumulativeInfectedTotal += newInf;   // ★ 추가됨
+
+      GameState.historyNewInfected.push({
+        turn: state.currentTurn,
+        newInfected: newInf
+      });
+      updateNewInfectedHistory();
       
       stepRecovery();
       renderAll();
@@ -1078,6 +1107,7 @@
   </script>
 </body>
 </html>
+
 
 
 
