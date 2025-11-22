@@ -957,8 +957,7 @@
     // 10. SVG 맵 로드
     // =========================
     function loadSVGMap() {
-      // GitHub 루트에 있는 "Group 2.svg"를 사용 (파일 이름 바꾸면 여기도 바꾸면 됨)
-      fetch("Group 2.svg")
+      fetch("./map.svg")
         .then(res => res.text())
         .then(svgText => {
           UI.svgMapContainer.insertAdjacentHTML("afterbegin", svgText);
@@ -1044,3 +1043,4 @@
   </script>
 </body>
 </html>
+
