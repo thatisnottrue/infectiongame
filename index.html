@@ -356,6 +356,7 @@
       PLAYER_BASE_RATE: 1.0,      // 감염된 플레이어 → 시민 감염 시도 확률
       VACCINE_REDUCTION_FACTOR: 0.1, // 백신 후 감염률 90% 감소
       CHESTS_REQUIRED_FOR_VACCINE: 8
+      RECOVERY_TURNS: 4
     };
 
     // =========================
@@ -791,9 +792,8 @@
       return newInf;
     }
 
-    // ★★★ 여기 새로 추가 ★★★
     function stepRecovery() {
-      const RECOVERY_TURNS = 4;
+      const RECOVERY_TURNS = GameConfig.RECOVERY_TURNS;
 
       for (const e of GameState.entities) {
         // 시민만 회복 대상으로
@@ -1078,6 +1078,7 @@
   </script>
 </body>
 </html>
+
 
 
 
