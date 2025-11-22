@@ -322,12 +322,6 @@
             </div>
           </div>
 
-          <div class="stat-item">
-            <div class="stat-label">감염재생산지수</div>
-            <div class="stat-value" id="statReproduction">0.00</div>
-            <div class="stat-note">직전 턴 신규 감염 / 감염자</div>
-          </div>
-
           <div class="stat-history" id="infectedHistoryBox">
             <div><b>턴별 누적 감염 인구 (기록용)</b></div>
             <div>아직 데이터가 없습니다.</div>
@@ -381,10 +375,6 @@
       historyNewInfected: [],
       lastRecordedTurn: 0,
       cumulativeInfectedTotal: 0,
-
-      lastNewInfected: 0,        // 직전 턴 신규 감염자 수
-      lastReproductionIndex: 0,  // 직전 턴 감염재생산지수 (R)
-
       activeChestTiles: new Set(),
       chestWave: 0,
       openedChestCount: 0,
@@ -415,7 +405,6 @@
       statTotal: document.getElementById("statTotal"),
       statOpenedChests: document.getElementById("statOpenedChests"),
       statVaccineStatus: document.getElementById("statVaccineStatus"),
-      statReproduction: document.getElementById("statReproduction"), // 재생
       infectedHistoryBox: document.getElementById("infectedHistoryBox"),
       newInfectedHistoryBox: document.getElementById("newInfectedHistoryBox"),
       vaccineToggle: document.getElementById("vaccineToggle"),
@@ -1005,7 +994,6 @@
       UI.statInfected.textContent = inf;
       UI.statRatio.textContent = Math.round((inf / total) * 100) + "%";
       UI.statTurn.textContent = state.currentTurn;
-      UI.statReproduction.textContent = state.lastReproductionIndex.toFixed(2);
 
       if (!state.vaccineFeatureEnabled) {
         UI.statOpenedChests.textContent = "-";
@@ -1071,9 +1059,6 @@
       const prevInfected = computeInfectedCount()
       const newInf = stepInfection();
       GameState.cumulativeInfectedTotal += newInf;   // ★ 추가됨
-      GameState.lastNewInfected = newInf;
-      GameState.lastReproductionIndex =
-        prevInfected > 0 ? newInf / prevInfected : 0;
 
       GameState.historyNewInfected.push({
         turn: state.currentTurn,
@@ -1128,6 +1113,7 @@
   </script>
 </body>
 </html>
+
 
 
 
