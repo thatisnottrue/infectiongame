@@ -365,7 +365,11 @@
       apiKey: "AIzaSyD78qp_t_LZnXEnPHnKoaXB9RYLIsu82K4",
       authDomain: "infectiongametest.firebaseapp.com",
       databaseURL: "https://infectiongametest-default-rtdb.firebaseio.com",
-      projectId: "infectiongametest"
+      projectId: "infectiongametest",
+      storageBucket: "infectiongametest.firebasestorage.app",
+      messagingSenderId: "1098044286154",
+      appId: "1:1098044286154:web:69cb7e1512172a974d0033",
+      measurementId: "G-G2TLQCTXSJ"
     };
 
     firebase.initializeApp(firebaseConfig);
@@ -1535,7 +1539,7 @@
             GameState.openedChestCount = 0;
             GameState.vaccineActive = false;
             addLog(
-              "백신 시스템이 비활성화되었습니다. 상자와 백신 효과가 모두 제거됩니다."
+              "백신 시스템이 비활성화되었습니다."
             );
           } else {
             addLog(
@@ -1551,6 +1555,7 @@
   </script>
 </body>
 </html>
+
 
 
 
