@@ -412,7 +412,7 @@
 
       tileElements: [],      // [index] -> { path, overlay, pop, inf, ply, pieces }
       tileCenters: [],       // [index] -> { x, y }
-      neighborMap: []        // [index] -> [neighborIndex ...]
+      neighborMap: [],        // [index] -> [neighborIndex ...]
 
       // ★ 서버(교사)에서 받은 요약값 저장용
       remoteInfectedTotal: null,
@@ -1106,7 +1106,7 @@
         infected: 0,
         vaccinatedCitizens: 0,
         hasChest: false
-      });
+      }));
 
       // 시민/플레이어로부터 통계 쌓기
       for (const e of state.entities) {
@@ -1156,97 +1156,99 @@
         }
       }
 
-      const tiles = [...Array(NUM_TILES)].map(() => ({
-        total: 0,
-        infected: 0,
-        players: 0,
-        vaccinatedCitizens: 0
-      }));
-      const tileEntities = [...Array(NUM_TILES)].map(() => ({
-        players: [],
-        citizens: []
-      }));
-
       // 2) 교사/싱글 모드: 기존 방식 그대로
 
-      for (const e of state.entities) {
-        const t = tiles[e.tileIndex];
-        t.total++;
-        if (e.infected) t.infected++;
-        if (e.type === "player") {
-          t.players++;
-          tileEntities[e.tileIndex].players.push(e);
-        } else {
-          tileEntities[e.tileIndex].citizens.push(e);
+      else {
+        tiles = [...Array(NUM_TILES)].map(() => ({
+          total: 0,
+          infected: 0,
+          players: 0,
+          vaccinatedCitizens: 0,
+          hasChest: false
+        }));
+        tileEntities = [...Array(NUM_TILES)].map(() => ({
+          players: [],
+          citizens: []
+        }));
 
-          if (e.vaccinated) {
-            t.vaccinatedCitizens++;
+        for (const e of state.entities) {
+          const t = tiles[e.tileIndex];
+          t.total++;
+          if (e.infected) t.infected++;
+          if (e.type === "player") {
+            t.players++;
+            tileEntities[e.tileIndex].players.push(e);
+          } else {
+            tileEntities[e.tileIndex].citizens.push(e);
+
+            if (e.vaccinated) {
+              t.vaccinatedCitizens++;
+            }
           }
         }
+
+        // 교사 쪽에서도 hasChest 플래그 세팅
+        state.activeChestTiles.forEach(idx => {
+          if (tiles[idx]) tiles[idx].hasChest = true;
+        });
       }
 
-      // 교사 쪽에서도 hasChest 플래그 세팅
-      state.activeChestTiles.forEach(idx => {
-        if (tiles[idx]) tiles[idx].hasChest = true;
-      });
-    }
+      // 3) 실제 렌더링
 
-    // 3) 실제 렌더링
+      for (let i = 0; i < NUM_TILES; i++) {
+        const t = tiles[i];
+        const el = state.tileElements[i];
+        if (!el) continue;
 
-    for (let i = 0; i < NUM_TILES; i++) {
-      const t = tiles[i];
-      const el = state.tileElements[i];
-      if (!el) continue;
+        el.pop.textContent = t.total;
 
-      el.pop.textContent = t.total;
+        const hasChest =
+          state.vaccineFeatureEnabled && !!t.hasChest;
 
-      const hasChest =
-        state.vaccineFeatureEnabled && !!t.hasChest;
-
-      // SVG 타일 색칠
-      if (hasChest) {
-        el.path.style.fill = "rgba(200, 220, 255, 0.9)";
-      } else {
-        const infratio = t.total > 0 ? t.infected / t.total : 0;
-        const vacRatio = t.total > 0 ? t.vaccinatedCitizens / t.total : 0;
+        // SVG 타일 색칠
+        if (hasChest) {
+          el.path.style.fill = "rgba(200, 220, 255, 0.9)";
+        } else {
+          const infratio = t.total > 0 ? t.infected / t.total : 0;
+          const vacRatio = t.total > 0 ? t.vaccinatedCitizens / t.total : 0;
         
-        let baseR, baseG, baseB;
-        if (infratio === 0) {
-          baseR = 250;
-          baseG = 250;
-          baseB = 250;
-        } else {
-          baseR = 255;
-          baseG = Math.round(250 * (1 - infratio));
-          baseB = Math.round(250 * (1 - infratio));
+          let baseR, baseG, baseB;
+          if (infratio === 0) {
+            baseR = 250;
+            baseG = 250;
+            baseB = 250;
+          } else {
+            baseR = 255;
+            baseG = Math.round(250 * (1 - infratio));
+            baseB = Math.round(250 * (1 - infratio));
+          }
+
+          const vaccineR = 0;
+          const vaccineG = 220;
+          const vaccineB = 0;
+
+          const alpha = vacRatio; // 0 ~ 1 : 백신 비율이 곧 섞는 비율
+
+          const r = Math.round(baseR * (1 - alpha) + vaccineR * alpha);
+          const g = Math.round(baseG * (1 - alpha) + vaccineG * alpha);
+          const b = Math.round(baseB * (1 - alpha) + vaccineB * alpha);
+
+          el.path.style.fill = `rgb(${r}, ${g}, ${b})`;
         }
 
-        const vaccineR = 0;
-        const vaccineG = 220;
-        const vaccineB = 0;
+        // 말(토큰) 표시
+        const pieceContainer = el.pieces;
+        pieceContainer.innerHTML = "";
 
-        const alpha = vacRatio; // 0 ~ 1 : 백신 비율이 곧 섞는 비율
-
-        const r = Math.round(baseR * (1 - alpha) + vaccineR * alpha);
-        const g = Math.round(baseG * (1 - alpha) + vaccineG * alpha);
-        const b = Math.round(baseB * (1 - alpha) + vaccineB * alpha);
-
-        el.path.style.fill = `rgb(${r}, ${g}, ${b})`;
-      }
-
-      // 말(토큰) 표시
-      const pieceContainer = el.pieces;
-      pieceContainer.innerHTML = "";
-
-      const playersHere = tileEntities[i].players;
-      playersHere.forEach(p => {
-        const d = document.createElement("div");
-        if (p.vaccinated) {
-          d.className = "piece vaccinated";
-        } else {
-          d.className =
-            "piece player" + (p.infected ? " infected" : "");
-        }
+        const playersHere = tileEntities[i].players;
+        playersHere.forEach(p => {
+          const d = document.createElement("div");
+          if (p.vaccinated) {
+            d.className = "piece vaccinated";
+          } else {
+            d.className =
+              "piece player" + (p.infected ? " infected" : "");
+          }
           pieceContainer.appendChild(d);
         });
       }
@@ -1412,6 +1414,7 @@
       // ---- 3) 교사라면 DB state 갱신 ----
       if (NetState.roomId && NetState.isTeacher && NetState.stateRef && NetState.playersRef) {
         const inf = computeInfectedCount();
+        const tileStats = computeTileStats();
 
         // /rooms/{roomId}/state 업데이트
         await NetState.stateRef.set({
@@ -1658,6 +1661,7 @@
   </script>
 </body>
 </html>
+
 
 
 
