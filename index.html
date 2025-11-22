@@ -778,12 +778,8 @@
         else tilePop[e.tileIndex].players.push(e);
       }
 
-      const useReduction = state.vaccineFeatureEnabled && state.vaccineActive;
-      const citizenRate =
-        BASE_INFECTION_RATE * (useReduction ? VACCINE_REDUCTION_FACTOR : 1);
-      const playerRate =
-        PLAYER_BASE_RATE * (useReduction ? VACCINE_REDUCTION_FACTOR : 1);
-
+      const citizenRate = BASE_INFECTION_RATE;
+      const playerRate = PLAYER_BASE_RATE;
       let newInf = 0;
 
       for (let t = 0; t < NUM_TILES; t++) {
@@ -801,6 +797,7 @@
           if (healthy.length === 0) break;
           const idx = randInt(healthy.length);
           const target = healthy[idx];
+          const susceptibility = target.vaccinated ? VACCINE_REDUCTION_FACTOR : 1;
           if (!target.infected && Math.random() < playerRate) {
             target.infected = true;
             target.infectedTurn = GameState.currentTurn;
@@ -1093,6 +1090,7 @@
       spawnChestsIfNeeded();
       stepMovement();
       openChestsByPlayers();
+      spreadVaccineFromPlayers();
       const prevInfected = computeInfectedCount()
       const newInf = stepInfection();
       GameState.cumulativeInfectedTotal += newInf;   // ★ 추가됨
@@ -1150,6 +1148,7 @@
   </script>
 </body>
 </html>
+
 
 
 
