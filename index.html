@@ -1472,18 +1472,6 @@
       NetState.movesRef = roomRef.child("moves");
       NetState.stateRef = roomRef.child("state");
 
-      // 교사에게 플레이어 하나 할당 (일단 P0 사용)
-      const myPlayer = GameState.entities.find(e => e.type === "player");
-      if (myPlayer) {
-        NetState.playerId = myPlayer.id;
-        await NetState.playersRef.child(myPlayer.id).set({
-          name: nickname,
-          role: "teacher",
-          tileIndex: myPlayer.tileIndex,
-          infected: myPlayer.infected,
-          vaccinated: myPlayer.vaccinated
-        });
-      }
 
       subscribeRoomState();
       subscribePlayers();
@@ -1661,6 +1649,7 @@
   </script>
 </body>
 </html>
+
 
 
 
