@@ -891,9 +891,8 @@
       for (const p of state.entities) {
         if (p.type !== "player") continue;
 
-        // ★ 실제 사람이 조종하는 말(교사/학생)은 자동 이동 대상에서 제외
-        if (NetState.playerId && p.id === NetState.playerId) {
-          continue;
+        // ★ 실제 사람이 조종하는 말(교사/학생)은 자동 이동 제외
+        if (p.isHuman) continue;
         }
         
         if (p.infected) continue; // 감염자는 자동 이동 없음
@@ -1597,11 +1596,19 @@
         // DB에 있는 player 상태를 로컬 엔티티에 반영
         allPlayers.forEach(p => {
           const remote = playersObj[p.id];
-          if (!remote) return;
+
+          if (!remote) {
+            // DB에 없으면 사람 안 붙은 AI 말로 취급
+            p.isHuman = false;
+            return;
+          }
 
           p.tileIndex  = remote.tileIndex ?? p.tileIndex;
           p.infected   = !!remote.infected;
           p.vaccinated = !!remote.vaccinated;
+
+          // ★ role 보고 사람 말인지 표시
+          p.isHuman = remote.role === "student" || remote.role === "teacher";
         });
 
         renderAll();
@@ -1664,6 +1671,7 @@
   </script>
 </body>
 </html>
+
 
 
 
