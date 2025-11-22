@@ -352,7 +352,21 @@
     </footer>
   </div>
 
+
+  <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-database-compat.js"></script>
+  
+
   <script>
+    // =========================
+    // 0. Firebase 초기화 (Realtime DB)
+    // =========================
+    const firebaseConfig = {
+      apiKey: "AIzaSyD78qp_t_LZnXEnPHnKoaXB9RYLIsu82K4",
+      authDomain: ""infectiongametest.firebaseapp.com"",
+      databaseURL: "https://infectiongametest-default-rtdb.firebaseio.com",
+      projectId: "infectiongametest",
+      
     // =========================
     // 1. 설정 (Config)
     // =========================
@@ -391,6 +405,21 @@
       tileElements: [],      // [index] -> { path, overlay, pop, inf, ply, pieces }
       tileCenters: [],       // [index] -> { x, y }
       neighborMap: []        // [index] -> [neighborIndex ...]
+    };
+
+    // =========================
+    // 네트워크/멀티플레이 상태
+    // =========================
+    const NetState = {
+      roomId: null,
+      isTeacher: false,      // 교사(방장)인지
+      playerId: null,        // 이 브라우저에 할당된 player 엔티티 id (예: "P3")
+      nickname: null,
+
+      roomRef: null,
+      playersRef: null,
+      movesRef: null,
+      stateRef: null
     };
 
     // =========================
@@ -698,6 +727,47 @@
 
     function onTileClick(tileIndex) {
       const state = GameState;
+
+      // ---- 학생 모드: 이동 "선택"만 기록 ----
+      if (NetState.roomId && !NetState.isTeacher) {
+        // 자신의 플레이어 엔티티 찾기
+        const myPlayer = state.entities.find(
+          e => e.type === "player" && e.id === NetState.playerId
+        );
+        if (!myPlayer) {
+          addLog("내 캐릭터를 찾을 수 없습니다.");
+          return;
+        }
+
+        const currentIndex = myPlayer.tileIndex;
+        if (tileIndex === currentIndex) {
+          addLog("현재 서 있는 타일은 다시 선택할 수 없습니다.");
+          return;
+        }
+
+        const neighbors = getNeighborIndices(currentIndex);
+        if (!neighbors.includes(tileIndex)) {
+          addLog("인접한 타일만 이동 선택이 가능합니다.");
+          return;
+        }
+
+        if (!NetState.movesRef || !NetState.playerId) {
+          addLog("서버와의 연결이 아직 준비되지 않았습니다.");
+          return;
+        }
+
+        // /rooms/{roomId}/moves/{playerId} = { region: tileIndex }
+        NetState.movesRef.child(NetState.playerId).set({
+          region: tileIndex
+        });
+
+        addLog(`다음 턴 이동 선택: #${currentIndex} → #${tileIndex}`);
+        return; // 여기서 끝! 실제 이동은 교사가 턴을 진행할 때 처리
+      }
+
+      // ---- 아래는 기존 onTileClick 로직(교사용) 계속 ----
+      // (네 코드에 있던 내용 그대로)
+      
       if (!state.selectedPlayer) {
         selectPlayerOnTile(tileIndex);
         return;
@@ -1199,8 +1269,38 @@
       updateNewInfectedHistory();
     }
 
-    function nextTurn() {
+    async function nextTurn() {
       const state = GameState;
+
+      // 학생이면 턴 진행 금지
+      if (NetState.roomId && !NetState.isTeacher) {
+        addLog("이 방에서는 교사만 턴을 진행할 수 있습니다.");
+        return;
+      }
+
+      // ---- 1) moves 읽어서 플레이어 이동 반영 (교사일 때) ----
+      if (NetState.roomId && NetState.isTeacher && NetState.movesRef) {
+        const movesSnap = await NetState.movesRef.get();
+        const moves = movesSnap.val() || {};
+
+        const players = state.entities.filter(e => e.type === "player");
+        for (const p of players) {
+          const m = moves[p.id];
+          if (!m) continue;
+
+          const dest = m.region;
+          const neighbors = getNeighborIndices(p.tileIndex);
+          if (neighbors.includes(dest)) {
+            p.tileIndex = dest;
+            addLog(`(적용) ${p.id} : #${p.tileIndex} → #${dest}`);
+          }
+        }
+
+        // moves 초기화
+        await NetState.movesRef.set(null);
+      }
+      // ---- 2) 기존 nextTurn 로직 그대로 ----
+
       state.currentTurn++;
       state.playersMovedThisTurn = new Set();
 
@@ -1223,11 +1323,175 @@
       renderAll();
       updateSelectedPlayerInfo();
       addLog(`새 감염자 ${newInf}명`);
+
+      // ---- 3) 교사라면 DB state 갱신 ----
+      if (NetState.roomId && NetState.isTeacher && NetState.stateRef && NetState.playersRef) {
+        const inf = computeInfectedCount();
+
+        // /rooms/{roomId}/state 업데이트
+        await NetState.stateRef.set({
+          turn: state.currentTurn,
+          vaccineReady: state.vaccineActive,
+          openedChests: state.openedChestCount,
+          infectedTotal: inf
+        });
+
+        // /rooms/{roomId}/players/{playerId} 위치/상태 동기화
+        const players = state.entities.filter(e => e.type === "player");
+        for (const p of players) {
+          await NetState.playersRef.child(p.id).update({
+            tileIndex: p.tileIndex,
+            infected: p.infected,
+            vaccinated: p.vaccinated
+          });
+        }
+      }
     }
 
     // =========================
     // 11. 초기화 & 이벤트 연결
     // =========================
+
+    // 랜덤 방 ID 생성용 (간단 버전)
+    function makeRandomRoomId() {
+      return Math.random().toString(36).substring(2, 8).toUpperCase();
+    }
+
+    // 교사: 새 방 만들기
+    async function createRoomAsTeacher(nickname) {
+      const roomId = makeRandomRoomId();
+      const roomRef = rtdb.ref("rooms/" + roomId);
+
+      // 방 기본 state 기록
+      await roomRef.set({
+        createdAt: Date.now(),
+        state: {
+          turn: GameState.currentTurn,
+          vaccineReady: GameState.vaccineActive,
+          openedChests: GameState.openedChestCount || 0,
+          infectedTotal: computeInfectedCount()
+        }
+      });
+
+      NetState.roomId = roomId;
+      NetState.isTeacher = true;
+      NetState.nickname = nickname;
+      NetState.roomRef = roomRef;
+      NetState.playersRef = roomRef.child("players");
+      NetState.movesRef = roomRef.child("moves");
+      NetState.stateRef = roomRef.child("state");
+
+      // 교사에게 플레이어 하나 할당 (일단 P0 사용)
+      const myPlayer = GameState.entities.find(e => e.type === "player");
+      if (myPlayer) {
+        NetState.playerId = myPlayer.id;
+        await NetState.playersRef.child(myPlayer.id).set({
+          name: nickname,
+          role: "teacher",
+          tileIndex: myPlayer.tileIndex,
+          infected: myPlayer.infected,
+          vaccinated: myPlayer.vaccinated
+        });
+      }
+
+      subscribeRoomState();
+      subscribePlayers();
+      alert(`방이 생성되었습니다!\n방 ID: ${roomId}\n이 코드를 학생들에게 알려주세요.`);
+    }
+
+    // 학생: 기존 방에 참가
+    async function joinRoomAsStudent(nickname, roomId) {
+      const roomRef = rtdb.ref("rooms/" + roomId);
+      const snap = await roomRef.get();
+
+      if (!snap.exists()) {
+        alert("해당 방 ID가 존재하지 않습니다.");
+        return;
+      }
+
+      NetState.roomId = roomId;
+      NetState.isTeacher = false;
+      NetState.nickname = nickname;
+      NetState.roomRef = roomRef;
+      NetState.playersRef = roomRef.child("players");
+      NetState.movesRef = roomRef.child("moves");
+      NetState.stateRef = roomRef.child("state");
+
+      // 로컬 플레이어 엔티티 중 아직 안 써먹은 걸 하나 할당
+      const freePlayer = GameState.entities.find(e => e.type === "player" && !e._reserved);
+      if (!freePlayer) {
+        alert("더 이상 할당 가능한 플레이어 말이 없습니다. (최대 인원 초과)");
+        return;
+      }
+      freePlayer._reserved = true;
+      NetState.playerId = freePlayer.id;
+
+      await NetState.playersRef.child(freePlayer.id).set({
+        name: nickname,
+        role: "student",
+        tileIndex: freePlayer.tileIndex,
+        infected: freePlayer.infected,
+        vaccinated: freePlayer.vaccinated
+      });
+
+      subscribeRoomState();
+      subscribePlayers();
+
+      alert(`방에 입장했습니다! (ID: ${roomId})`);
+    }
+
+    // =========================
+    //  방 state 실시간 구독 (/rooms/{roomId}/state)
+    // =========================
+    function subscribeRoomState() {
+      if (!NetState.stateRef) return;
+
+      NetState.stateRef.on("value", snapshot => {
+        const s = snapshot.val();
+        if (!s) return;
+
+        // 교사는 자기 로컬 state가 진짜라서, DB 값으로 덮어쓰지 않음
+        if (NetState.isTeacher) return;
+
+        // 학생은 DB의 state를 따라감
+        GameState.currentTurn      = s.turn ?? GameState.currentTurn;
+        GameState.openedChestCount = s.openedChests ?? GameState.openedChestCount;
+        GameState.vaccineActive    = !!s.vaccineReady;
+
+        // 감염 총합 같은 것도 저장해두고 싶으면 여기서 사용 가능
+        // GameState.cumulativeInfectedTotal = s.infectedTotal ?? GameState.cumulativeInfectedTotal;
+
+        renderAll();
+        updateSelectedPlayerInfo();
+      });
+    }
+
+    // =========================
+    //  players 실시간 구독 (/rooms/{roomId}/players)
+    // =========================
+    function subscribePlayers() {
+      if (!NetState.playersRef) return;
+
+      NetState.playersRef.on("value", snapshot => {
+        const playersObj = snapshot.val() || {};
+        const allPlayers = GameState.entities.filter(e => e.type === "player");
+
+        // DB에 있는 player 상태를 로컬 엔티티에 반영
+        allPlayers.forEach(p => {
+          const remote = playersObj[p.id];
+          if (!remote) return;
+
+          p.tileIndex  = remote.tileIndex ?? p.tileIndex;
+          p.infected   = !!remote.infected;
+          p.vaccinated = !!remote.vaccinated;
+        });
+
+        renderAll();
+        updateSelectedPlayerInfo();
+      });
+    }
+
+    
     function init() {
       loadSVGMap().then(() => {
         // SVG 로드 → 타일/이웃 설정 완료 후 엔티티 초기화
@@ -1236,6 +1500,22 @@
         addInitialLog();
         updateSelectedPlayerInfo();
 
+        // === 멀티플레이: 역할 & 방 연결 ===
+        const isTeacher = confirm("교사(방장)로 접속하시나요? 확인=예, 취소=아니오");
+        const nickname = prompt("닉네임을 입력하세요", isTeacher ? "교사" : "학생");
+
+        if (isTeacher) {
+          await createRoomAsTeacher(nickname || "교사");
+        } else {
+          const roomId = prompt("참여할 방 ID를 입력하세요 (교사가 알려준 코드)");
+          if (roomId) {
+            await joinRoomAsStudent(nickname || "학생", roomId.trim());
+          } else {
+            alert("방 ID가 없어 싱글플레이 모드로 진행합니다.");
+          }
+        }
+
+        // 버튼 리스너 연결
         UI.addDummyLogBtn.addEventListener("click", () =>
           addLog("테스트 로그")
         );
@@ -1266,6 +1546,7 @@
   </script>
 </body>
 </html>
+
 
 
 
