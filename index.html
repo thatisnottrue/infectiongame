@@ -584,6 +584,8 @@
           type: "citizen",
           tileIndex: randInt(NUM_TILES),
           infected: false
+          infectedTurn: null, 
+          recovered: false
         });
       }
       for (let i = 0; i < NUM_PLAYERS; i++) {
@@ -763,6 +765,7 @@
           const target = healthy[idx];
           if (!target.infected && Math.random() < playerRate) {
             target.infected = true;
+            target.infectedTurn = GameState.currentTurn;
             newInf++;
           }
           healthy.splice(idx, 1);
@@ -775,7 +778,7 @@
             if (healthy.length === 0) break;
             const idx = randInt(healthy.length);
             const target = healthy[idx];
-            if (!target.infected && Math.random() < citizenRate) {
+            if (!target.infected && !target.recovered && Math.random() < citizenRate) {
               target.infected = true;
               newInf++;
             }
@@ -998,6 +1001,25 @@
       openChestsByPlayers();
       const newInf = stepInfection();
 
+      function stepRecovery() {
+        const RECOVERY_TURNS = 4;
+
+        for (const e of GameState.entities) {
+          if (!e.type === "citizen") continue;
+          if (!e.infected) continue;
+          if (e.recovered) continue;      // 이미 회복된 경우 패스
+
+          // 감염된 지 4턴 지났는지 검사
+          if (e.infectedTurn !== null &&
+              GameState.currentTurn - e.infectedTurn >= RECOVERY_TURNS) {
+
+            e.infected = false;
+            e.recovered = true;           // 재감염 방지
+            e.infectedTurn = null;
+          }
+        }
+      }
+
       renderAll();
       updateSelectedPlayerInfo();
       addLog(`새 감염자 ${newInf}명`);
@@ -1044,6 +1066,7 @@
   </script>
 </body>
 </html>
+
 
 
 
