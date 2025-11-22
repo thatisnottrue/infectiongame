@@ -190,6 +190,10 @@
     .piece.vaccinated {
       background-image: url("./assets/player-vaccinated.svg");
     }
+    .piece.me {
+      box-shadow: 0 0 0 2px #ff9800; /* 주황색 테두리 */
+      border-radius: 50%;
+    }
 
     .side-panel {
       display: flex;
@@ -1249,6 +1253,11 @@
             d.className =
               "piece player" + (p.infected ? " infected" : "");
           }
+
+          // ★ 내 말이면 주황색 테두리 추가
+          if (NetState.playerId && p.id === NetState.playerId) {
+            d.classList.add("me");
+          }
           pieceContainer.appendChild(d);
         });
       }
@@ -1649,6 +1658,7 @@
   </script>
 </body>
 </html>
+
 
 
 
