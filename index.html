@@ -882,43 +882,34 @@
         }
       }
 
-      const tileCitizenInfo = [...Array(N)].map(() => ({
-        unvaccinated: 0,
-        vaccinated: 0
-      }));
-
-      for (const e of state.entities) {
-        if (e.type !== "citizen") continue;
-        const info = tileCitizenInfo[e.tileIndex];
-        if (e.vaccinated) info.vaccinated++;
-        else info.unvaccinated++;
-      }
+      // 각 플레이어 자동 이동
       for (const p of state.entities) {
         if (p.type !== "player") continue;
-        if (p.isHuman) continue;
+        if (p.isHuman) continue; // 사람 조종 말 제외
 
         const cur = p.tileIndex;
         const neighbors = getNeighborIndices(cur);
         if (neighbors.length === 0) continue;
 
-        // 연구소 위에 이미 있으면 굳이 자동 이동 안 함
-        if (state.activeChestTiles.has(cur)) continue;
+        let best = null;
+        let bestDist = dist[cur];
+
+        // 이웃 중에서 연구소에 더 가까워지는 타일 찾기
+        for (const nb of neighbors) {
+          for (const nb of neighbors) {
+            bestDist = dist[nb];
           }
-          if (best !== null && bestDist < Infinity) {
-            p.tileIndex = best;
-            state.playersMovedThisTurn.add(p.id);
-          } else {
-            // 연구소까지 경로 없으면 랜덤 이동
-            const r = neighbors[randInt(neighbors.length)];
-            p.tileIndex = r;
-            state.playersMovedThisTurn.add(p.id);
-          }
-          continue;
         }
 
-        // (필요시: 백신 가진 플레이어의 행동 정의를 여기에 넣을 수 있음)
-        const r = neighbors[randInt(neighbors.length)];
-        p.tileIndex = r;
+        if (best !== null && bestDist < Infinity) {
+          // 연구소 쪽으로 한 칸 이동
+          p.tileIndex = best;
+        } else {
+          // 연구소까지 경로 없으면 랜덤 이동
+          const r = neighbors[randInt(neighbors.length)];
+          p.tileIndex = r;
+        }
+
         state.playersMovedThisTurn.add(p.id);
       }
     }
@@ -1018,7 +1009,6 @@
           const target = healthy[idx];
 
           const infectionProb = playerRate;
-          const infectionProb = citizenRate;
 
           if (!target.infected && Math.random() < infectionProb) {
             target.infected = true;
@@ -1036,7 +1026,6 @@
             const idx = randInt(healthy.length);
             const target = healthy[idx];
 
-            const susceptibility = target.vaccinated ? VACCINE_REDUCTION_FACTOR : 1;
             const infectionProb = citizenRate * susceptibility;
 
             if (!target.infected && !target.recovered && Math.random() < infectionProb) {
@@ -1087,7 +1076,6 @@
         const t = tiles[e.tileIndex];
         t.total++;
         if (e.infected) t.infected++;
-        }
       }
 
       // 연구소 위치 표시 (기존 hasChest 재사용)
@@ -1210,21 +1198,17 @@
         } else {
           const infratio = t.total > 0 ? t.infected / t.total : 0;
         
-          let baseR, baseG, baseB;
+          let r, g, b;
           if (infratio === 0) {
-            baseR = 250;
-            baseG = 250;
-            baseB = 250;
+            r = 250;
+            g = 250;
+            b = 250;
           } else {
-            baseR = 255;
-            baseG = Math.round(250 * (1 - infratio));
-            baseB = Math.round(250 * (1 - infratio));
+            r = 255;
+            g = Math.round(250 * (1 - infratio));
+            b = Math.round(250 * (1 - infratio));
           }
-
-          const vaccineR = 0;
-          const vaccineG = 220;
-          const vaccineB = 0;
-
+          
           el.path.style.fill = `rgb(${r}, ${g}, ${b})`;
         }
 
@@ -1652,6 +1636,7 @@
   </script>
 </body>
 </html>
+
 
 
 
