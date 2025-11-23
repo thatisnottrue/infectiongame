@@ -896,8 +896,9 @@
 
         // 이웃 중에서 연구소에 더 가까워지는 타일 찾기
         for (const nb of neighbors) {
-          for (const nb of neighbors) {
+          if (dist[nb] < bestDist) {
             bestDist = dist[nb];
+            best = nb;
           }
         }
 
@@ -1000,7 +1001,7 @@
         const infectedPlayers = players.filter(p => p.infected);
         const startInfCitizens = citizens.filter(c => c.infected);
 
-        let healthy = citizens.filter(c => !c.infected);
+        let 
 
         // 감염된 플레이어 → 시민 1명 감염 시도
         for (const p of infectedPlayers) {
@@ -1026,7 +1027,7 @@
             const idx = randInt(healthy.length);
             const target = healthy[idx];
 
-            const infectionProb = citizenRate * susceptibility;
+            const infectionProb = citizenRate
 
             if (!target.infected && !target.recovered && Math.random() < infectionProb) {
               target.infected = true;
@@ -1636,6 +1637,7 @@
   </script>
 </body>
 </html>
+
 
 
 
