@@ -1043,21 +1043,22 @@
         }
 
         // 2편: 백신 접종 모드 (연구소 = 백신 보급소)
-      if (state.gameMode === GameModes.VACCINATION) {
-        for (const e of state.entities) {
-          if (e.type !== "player") continue;
-          if (!state.activeChestTiles.has(e.tileIndex)) continue; // 연구소 위가 아님
+        if (state.gameMode === GameModes.VACCINATION) {
+          for (const e of state.entities) {
+            if (e.type !== "player") continue;
+            if (!state.activeChestTiles.has(e.tileIndex)) continue; // 연구소 위가 아님
 
-          // ★ 아직 백신을 얻지 않은 플레이어만 처리
-          if (!e.hasVaccine) {
-            e.hasVaccine = true;
-            addLog(`플레이어 ${e.id}가 연구소에서 백신을 영구히 획득했습니다.`);
+            // 아직 백신을 얻지 않은 플레이어만 처리
+            if (!e.hasVaccine) {
+              e.hasVaccine = true;
+              addLog(`플레이어 ${e.id}가 연구소에서 백신을 영구히 획득했습니다.`);
+            }
           }
-        }
 
-        return;
+          return;
+        }
       }
-        
+
       function stepInfection() {
         const {
           NUM_TILES,
@@ -1134,7 +1135,7 @@
         
         return newInf;
       }
-
+      
       // 8-1. 백신 접종 단계 (2번째 게임 전용)
       //  - 백신을 영구 획득한 플레이어(hasVaccine=true)는
       //    자신이 위치한 타일 + 인접 타일 중 랜덤 2칸의
@@ -1810,4 +1811,5 @@
     </script>
   </body>
   </html>
+
 
