@@ -992,7 +992,7 @@
 
       // 연구소에 있는 플레이어들로부터 효과 적용
       //  - 1편(개발 모드): 백신 개발률 up/down
-      //  - 2편(접종 모드): 연구소 방문 횟수에 따라 백신 획득
+      //  - 2편(접종 모드): 연구소 방문 횟수에 따라 영구 백신 획득
       function applyLabEffects() {
         const state = GameState;
         if (!state.vaccineFeatureEnabled) return;
@@ -1010,16 +1010,20 @@
             if (e.type !== "player") continue;
             if (!state.activeChestTiles.has(e.tileIndex)) continue;
 
+            // 플레이어별 연구소 방문 기록 세트 (없으면 생성)
             if (!e.visitedLabs) {
               e.visitedLabs = new Set();
             }
 
+            // 이미 이 연구소(타일)를 방문한 적이 있으면 스킵
             if (e.visitedLabs.has(e.tileIndex)) {
               continue;
             }
 
+            // 처음 상호작용하는 연구소로 기록
             e.visitedLabs.add(e.tileIndex);
 
+            // 감염 여부에 따라 백신 개발률 증감
             if (e.infected) delta -= loss;
             else delta += gain;
           }
@@ -1044,29 +1048,40 @@
         }
 
         // 2편: 백신 접종 모드
-        //  - 각 플레이어가 ‘서로 다른 연구소’ 3곳을 방문하면 백신을 영구 획득
+        //  - 플레이어별로 "처음 방문하는 연구소"만 유효
+        //  - 서로 다른 연구소 3곳을 방문하면 영구 백신 획득
         if (state.gameMode === GameModes.VACCINATION) {
           for (const e of state.entities) {
             if (e.type !== "player") continue;
-            if (!state.activeChestTiles.has(e.tileIndex)) continue; // 연구소 위가 아님
+            if (!state.activeChestTiles.has(e.tileIndex)) continue;
 
-            // 접종 모드용 연구소 방문 기록 세트가 없다면 생성
-            if (!e.vaccinationLabs) {
-              e.vaccinationLabs = new Set();
+            // 연구소 방문 기록 세트 보장
+            if (!e.visitedLabs) {
+              e.visitedLabs = new Set();
             }
 
-            // 이번 턴에 서 있는 연구소를 처음 방문했다면 기록
-            if (!e.vaccinationLabs.has(e.tileIndex)) {
-              e.vaccinationLabs.add(e.tileIndex);
+            // 이미 이 연구소는 사용한 적이 있으면 효과 없음
+            if (e.visitedLabs.has(e.tileIndex)) {
+              continue;
+            }
 
-              const count = e.vaccinationLabs.size;
-              addLog(`플레이어 ${e.id}가 ${count}번째 연구소에 도착했습니다.`);
+            // 이번에 처음 방문한 연구소로 기록
+            e.visitedLabs.add(e.tileIndex);
+            const visitedCount = e.visitedLabs.size;
 
-              // ★ 3번째 연구소에 도착한 순간 백신 영구 획득
-              if (!e.hasVaccine && count >= 3) {
-                e.hasVaccine = true;
-                addLog(`플레이어 ${e.id}는 세 번째 연구소에 도착해 백신을 영구히 획득했습니다!`);
-              }
+            // 1·2번째 연구소: 안내용 로그
+            if (visitedCount < 3) {
+              addLog(
+                `플레이어 ${e.id}가 ${visitedCount}번째 연구소에 도착했습니다. (총 3곳을 찾아야 백신의 비밀을 완성할 수 있습니다.)`
+              );
+            }
+
+            // 3번째 연구소에 도착하면 영구 백신 획득
+            if (visitedCount === 3 && !e.hasVaccine) {
+              e.hasVaccine = true;
+              addLog(
+                `플레이어 ${e.id}가 3번째 연구소에 도착해 백신을 영구히 획득했습니다! 이제 이동할 때마다 주변 시민들에게 접종할 수 있습니다.`
+              );
             }
           }
 
@@ -1490,6 +1505,13 @@
         if (state.gameMode === GameModes.DEVELOPMENT) {
           state.gameMode = GameModes.VACCINATION;
 
+          // 2번째 게임 시작: 연구소 방문 정보/백신 보유 상태 초기화 (원하면)
+          for (const e of state.entities) {
+            if (e.type !== "player") continue;
+            e.visitedLabs = new Set();
+            e.hasVaccine = false;
+          }
+
           addLog("=== 상당히 오랜 시간이 지났습니다. ===");
           addLog("과거 수많은 사람들을 죽음으로 몰고간 그 병이 다시 나타나기 시작했습니다.");
           addLog("소문에 의하면 지난 시대의 과학자들이 백신을 만들었지만");
@@ -1826,6 +1848,7 @@
     </script>
   </body>
   </html>
+
 
 
 
