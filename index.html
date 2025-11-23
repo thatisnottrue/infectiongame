@@ -313,9 +313,12 @@
               <div class="stat-note">턴 제한 없음</div>
             </div>
             <div class="stat-item">
-              <div class="stat-label">열린 상자 수</div>
-              <div class="stat-value" id="statOpenedChests">0 / 8</div>
-              <div class="stat-note">8개 열면 백신 완성</div>
+              <!-- ★ 텍스트 수정: 열린 상자 수 → 백신 개발률 -->
+              <div class="stat-label">백신 개발률</div>
+              <!-- ★ 초기값 수정: 0 / 8 → 0% -->
+              <div class="stat-value" id="statOpenedChests">0%</div>
+              <!-- ★ 설명 수정 -->
+              <div class="stat-note">연구소 방문으로 증가/감소</div>
             </div>
             <div class="stat-item">
               <div class="stat-label">백신 상태</div>
@@ -323,7 +326,7 @@
               <div class="stat-note">
                 <label class="toggle-label">
                   <input type="checkbox" id="vaccineToggle" checked />
-                  백신 시스템 사용
+                  백신/연구소 시스템 사용
                 </label>
               </div>
             </div>
@@ -352,7 +355,7 @@
     </main>
 
     <footer>
-      ※ 이 버전은 SVG 맵(169타일) 위에서 플레이어/시민을 시각화하고, 감염 확산 패턴을 관찰하기 위한 프로토타입입니다.
+      ※ 이 버전은 SVG 맵(169타일) 위에서 플레이어/시민을 시각화하고, 감염 확산 패턴과 연구소·백신 개발을 관찰하기 위한 프로토타입입니다.
     </footer>
   </div>
 
@@ -388,9 +391,14 @@
       NUM_PLAYERS: 25,
       BASE_INFECTION_RATE: 0.8,   // 시민 감염 기본 80%
       PLAYER_BASE_RATE: 1.0,      // 감염된 플레이어 → 시민 감염 시도 확률
-      VACCINE_REDUCTION_FACTOR: 0.05, // 백신 후 감염률 95% 감소
-      CHESTS_REQUIRED_FOR_VACCINE: 5,
-      RECOVERY_TURNS: 4
+      VACCINE_REDUCTION_FACTOR: 0.05, // 백신 완성 후 감염률 95% 감소
+      CHESTS_REQUIRED_FOR_VACCINE: 5, // (이제 직접 쓰진 않지만 남겨둠)
+      RECOVERY_TURNS: 4,
+
+      // ★ 새 설정: 연구소 개수 & 백신 개발률 변화량
+      LAB_COUNT: 5,
+      VACCINE_PROGRESS_GAIN: 10,   // 연구소에 있는 비감염 플레이어 1명당 +10%
+      VACCINE_PROGRESS_LOSS: 15    // 연구소에 있는 감염 플레이어 1명당 -15%
     };
 
     // =========================
@@ -404,10 +412,13 @@
       historyNewInfected: [],
       lastRecordedTurn: 0,
       cumulativeInfectedTotal: 0,
+
+      // ★ activeChestTiles = 연구소 위치 세트 (이름만 그대로 사용)
       activeChestTiles: new Set(),
-      chestWave: 0,
-      openedChestCount: 0,
-      vaccineActive: false,
+      chestWave: 0,            // 더는 안 씀
+      openedChestCount: 0,     // ★ "열린 상자 수" 대신 "백신 개발률(0~100)"로 사용
+      vaccineActive: false,    // ★ 백신 완성 여부
+
       vaccineFeatureEnabled: true,
 
       selectedPlayer: null,
@@ -627,34 +638,20 @@
     function getNeighborIndices(i) {
       return GameState.neighborMap[i] || [];
     }
-    //백신패치중추가한부분
-    function areAllPlayersVaccinated() {
-      const players = GameState.entities.filter(e => e.type === "player");
-      if (players.length === 0) return false;
-      return players.every(p => p.vaccinated);
-    }
 
-    function spreadVaccineFromPlayers() {
+    // ★ 연구소(센터) 초기화: 게임 시작 시부터 존재
+    function initLabs() {
       const state = GameState;
+      const { NUM_TILES, LAB_COUNT } = GameConfig;
 
-      const vaccinatedTiles = new Set();
-      for (const e of state.entities) {
-        if (e.type === "player" && e.vaccinated) {
-          vaccinatedTiles.add(e.tileIndex);
+      state.activeChestTiles = new Set();
+      const targetCount = LAB_COUNT || 5;
 
-          const neighbors = getNeighborIndices(e.tileIndex);
-          for (const n of neighbors) {
-            vaccinatedTiles.add(n);
-          }
-        }
+      while (state.activeChestTiles.size < targetCount) {
+        state.activeChestTiles.add(randInt(NUM_TILES));
       }
-      if (vaccinatedTiles.size === 0) return;
-      for (const e of state.entities) {
-        if (e.type !== "citizen") continue;
-        if (vaccinatedTiles.has(e.tileIndex)) {
-          e.vaccinated = true;
-        }
-      }
+
+      console.log("연구소(센터) 위치:", Array.from(state.activeChestTiles));
     }
 
     // =========================
@@ -782,7 +779,6 @@
       }
 
       // ---- 아래는 기존 onTileClick 로직(교사용) 계속 ----
-      // (네 코드에 있던 내용 그대로)
       
       if (!state.selectedPlayer) {
         selectPlayerOnTile(tileIndex);
@@ -834,7 +830,7 @@
     }
 
     // =========================
-    // 8. 이동/감염/상자 로직
+    // 8. 이동/감염/연구소(센터) 로직
     // =========================
     function stepMovement() {
       const state = GameState;
@@ -855,25 +851,21 @@
 
     function stepPlayerAutoMovement() {
       const state = GameState;
-      const chestTiles = Array.from(state.activeChestTiles);
+      const chestTiles = Array.from(state.activeChestTiles); // 연구소 타일들
       const N = GameConfig.NUM_TILES;
 
-      // ① 상자가 "없을 때" → 완전 랜덤 이동
+      // 연구소가 혹시 0개라면 → 랜덤 이동
       if (chestTiles.length === 0) {
         for (const p of state.entities) {
           if (p.type !== "player") continue;
-          // 사람(교사/학생)이 조종하는 말은 자동 이동 제외
-          if (p.isHuman) continue;
+          if (p.isHuman) continue; // 사람(교사/학생)이 조종하는 말은 자동 이동 제외
           const neighbors = getNeighborIndices(p.tileIndex);
           if (neighbors.length === 0) continue;
 
-          // 인접 타일 중 하나를 랜덤 선택해서 이동
           const r = neighbors[randInt(neighbors.length)];
           p.tileIndex = r;
-
           state.playersMovedThisTurn.add(p.id);
         }
-        // 상자가 없을 땐 여기서 끝
         return;
       }
       
@@ -909,14 +901,15 @@
       }
       for (const p of state.entities) {
         if (p.type !== "player") continue;
-
-        // ★ 실제 사람이 조종하는 말(교사/학생)은 자동 이동 제외
         if (p.isHuman) continue;
 
         const cur = p.tileIndex;
-        if (state.activeChestTiles.has(cur)) continue;
         const neighbors = getNeighborIndices(cur);
         if (neighbors.length === 0) continue;
+
+        // 연구소 위에 이미 있으면 굳이 자동 이동 안 함
+        if (state.activeChestTiles.has(cur)) continue;
+
         if (!p.vaccinated) {
           let best = null;
           let bestDist = dist[cur];
@@ -932,32 +925,54 @@
             p.tileIndex = best;
             state.playersMovedThisTurn.add(p.id);
           } else {
-            // 상자까지 경로 없으면 랜덤이동
+            // 연구소까지 경로 없으면 랜덤 이동
             const r = neighbors[randInt(neighbors.length)];
             p.tileIndex = r;
             state.playersMovedThisTurn.add(p.id);
           }
           continue;
         }
-        let bestNb = null;
-        let maxUnvaccinated = 0;
-        for (const nb of neighbors) {
-          const u = tileCitizenInfo[nb].unvaccinated;
-          if (u > maxUnvaccinated) {
-            maxUnvaccinated = u;
-            bestNb = nb;
-          }
-        }
 
-        if (bestNb !== null && maxUnvaccinated > 0) {
-          p.tileIndex = bestNb;
-          state.playersMovedThisTurn.add(p.id);
-          continue;
-        }
-
+        // (필요시: 백신 가진 플레이어의 행동 정의를 여기에 넣을 수 있음)
         const r = neighbors[randInt(neighbors.length)];
         p.tileIndex = r;
         state.playersMovedThisTurn.add(p.id);
+      }
+    }
+
+    // ★ 연구소에 있는 플레이어들로부터 백신 개발률 변화
+    function applyLabEffects() {
+      const state = GameState;
+      if (!state.vaccineFeatureEnabled) return;
+      if (state.vaccineActive) return; // 이미 완성된 백신
+
+      const gain = GameConfig.VACCINE_PROGRESS_GAIN || 10;
+      const loss = GameConfig.VACCINE_PROGRESS_LOSS || 15;
+
+      let delta = 0;
+
+      for (const e of state.entities) {
+        if (e.type !== "player") continue;
+        if (!state.activeChestTiles.has(e.tileIndex)) continue; // 연구소 위가 아님
+
+        if (e.infected) delta -= loss;
+        else delta += gain;
+      }
+
+      if (delta === 0) return;
+
+      state.openedChestCount = Math.max(
+        0,
+        Math.min(100, state.openedChestCount + delta)
+      );
+
+      addLog(
+        `연구소 방문으로 백신 개발률이 ${delta > 0 ? "+" + delta : delta}% 변화했습니다. (현재 ${state.openedChestCount}%)`
+      );
+
+      if (state.openedChestCount >= 100 && !state.vaccineActive) {
+        state.vaccineActive = true;
+        addLog("백신이 완성되었습니다! 이제 모든 시민의 감염률이 95% 감소합니다.");
       }
     }
 
@@ -980,8 +995,14 @@
         else tilePop[e.tileIndex].players.push(e);
       }
 
-      const citizenRate = BASE_INFECTION_RATE;
-      const playerRate = PLAYER_BASE_RATE;
+      // ★ 백신 완성 시 전체 감염률 95% 감소
+      let citizenRate = BASE_INFECTION_RATE;
+      let playerRate = PLAYER_BASE_RATE;
+      if (state.vaccineActive && state.vaccineFeatureEnabled) {
+        citizenRate *= VACCINE_REDUCTION_FACTOR;
+        playerRate *= VACCINE_REDUCTION_FACTOR;
+      }
+
       let newInf = 0;
 
       for (let t = 0; t < NUM_TILES; t++) {
@@ -999,9 +1020,12 @@
           if (healthy.length === 0) break;
           const idx = randInt(healthy.length);
           const target = healthy[idx];
+
+          // (개별 시민 백신은 사용 안 해도 되지만, 코드 구조는 유지)
           const susceptibility = target.vaccinated ? VACCINE_REDUCTION_FACTOR : 1;
           const infectionProb = playerRate * susceptibility;
-          if (!target.infected && Math.random() < playerRate) {
+
+          if (!target.infected && Math.random() < infectionProb) {
             target.infected = true;
             target.infectedTurn = GameState.currentTurn;
             newInf++;
@@ -1009,15 +1033,17 @@
           healthy.splice(idx, 1);
         }
 
-        // 감염된 시민 → 최대 2명 감염 시도 (80%)
+        // 감염된 시민 → 최대 2명 감염 시도
         healthy = citizens.filter(c => !c.infected);
         for (const src of startInfCitizens) {
           for (let k = 0; k < 2; k++) {
             if (healthy.length === 0) break;
             const idx = randInt(healthy.length);
             const target = healthy[idx];
+
             const susceptibility = target.vaccinated ? VACCINE_REDUCTION_FACTOR : 1;
             const infectionProb = citizenRate * susceptibility;
+
             if (!target.infected && !target.recovered && Math.random() < infectionProb) {
               target.infected = true;
               target.infectedTurn = GameState.currentTurn;
@@ -1034,16 +1060,10 @@
       const RECOVERY_TURNS = GameConfig.RECOVERY_TURNS;
 
       for (const e of GameState.entities) {
-        // 시민만 회복 대상으로
         if (e.type !== "citizen") continue;
-
-        // 아직 감염 중인 시민만
         if (!e.infected) continue;
-
-        // 이미 회복 판정된 시민은 스킵
         if (e.recovered) continue;
 
-        // 감염된 지 4턴 이상 지났으면 회복
         if (
           e.infectedTurn !== null &&
           GameState.currentTurn - e.infectedTurn >= RECOVERY_TURNS
@@ -1055,75 +1075,14 @@
       }
     }
 
+    // ★ 더 이상 쓰지 않는 보물상자 스폰 함수는 빈 동작으로 둠
     function spawnChestsIfNeeded() {
-      const state = GameState;
-      if (!state.vaccineFeatureEnabled) return;
-      if (areAllPlayersVaccinated()) return;
-      if (state.currentTurn < 3) return;
-      if ((state.currentTurn - 3) % 3 !== 0) return;
-
-      const { NUM_TILES } = GameConfig;
-      state.chestWave++;
-      const toSpawn = state.chestWave;
-      let spawned = 0;
-
-      while (spawned < toSpawn && state.activeChestTiles.size < NUM_TILES) {
-        const tileIndex = randInt(NUM_TILES);
-        if (state.activeChestTiles.has(tileIndex)) continue;
-        state.activeChestTiles.add(tileIndex);
-        spawned++;
-      }
-      if (spawned > 0) {
-        addLog(`보물상자 ${spawned}개가 랜덤 위치에 등장했습니다.`);
-      }
+      return;
     }
 
+    // ★ openChestsByPlayers는 applyLabEffects로 대체했으므로 사용 안 함
     function openChestsByPlayers() {
-      const state = GameState;
-      if (!state.vaccineFeatureEnabled) return;
-      if (state.activeChestTiles.size === 0) return;
-
-      let openedThisTurn = 0;
-      const wasVaccineResearchStarted = state.openedChestCount > 0;
-
-      for (const e of state.entities) {
-        if (e.type !== "player" || e.infected) continue;
-        const idx = e.tileIndex;
-        if (state.activeChestTiles.has(idx)) {
-          state.activeChestTiles.delete(idx);
-          state.openedChestCount++;
-          openedThisTurn++;
-
-          if (state.openedChestCount === 1 && !wasVaccineResearchStarted) {
-            addLog("첫 보물상자가 열려 백신 개발이 시작되었습니다.");
-          }
-
-          if (
-            !state.vaccineActive &&
-            state.openedChestCount >= GameConfig.CHESTS_REQUIRED_FOR_VACCINE
-          ) {
-            state.vaccineActive = true;
-            addLog(
-              "백신이 개발되었습니다! 이제 보물상자를 연 플레이어는 백신을 획득합니다."
-            );
-          }
-          if (state.vaccineActive && !e.vaccinated) {
-            e.vaccinated = true;
-            addLog(`플레이어 ${e.id}가 백신을 획득했습니다.`);
-            for (const c of state.entities) {
-              if (c.type === "citizen" && c.tileIndex === idx) {
-                c.vaccinated = true;
-              }
-            }
-          }
-        }
-      } // 백신패치중
-
-      if (openedThisTurn > 0) {
-        addLog(
-          `플레이어가 보물상자 ${openedThisTurn}개를 열었습니다. (누적: ${state.openedChestCount}개)`
-        );
-      }
+      return;
     }
 
     // 교사 쪽에서 매 턴 끝나고 타일 요약 정보 만드는 함수
@@ -1136,7 +1095,7 @@
         total: 0,
         infected: 0,
         vaccinatedCitizens: 0,
-        hasChest: false
+        hasChest: false   // ★ 연구소 여부
       }));
 
       // 시민/플레이어로부터 통계 쌓기
@@ -1150,7 +1109,7 @@
         }
       }
 
-      // 보물상자 위치 표시
+      // 연구소 위치 표시 (기존 hasChest 재사용)
       state.activeChestTiles.forEach(idx => {
         if (tiles[idx]) tiles[idx].hasChest = true;
       });
@@ -1174,7 +1133,6 @@
       if (NetState.roomId && !NetState.isTeacher && state.remoteTileStats) {
         tiles = state.remoteTileStats;
 
-        // 학생은 시민 상태를 로컬에서 안 쓰고, 플레이어 말 표시만 필요
         tileEntities = [...Array(NUM_TILES)].map(() => ({
           players: [],
           citizens: []
@@ -1187,8 +1145,7 @@
         }
       }
 
-      // 2) 교사/싱글 모드: 기존 방식 그대로
-
+      // 2) 교사/싱글 모드
       else {
         tiles = [...Array(NUM_TILES)].map(() => ({
           total: 0,
@@ -1218,14 +1175,33 @@
           }
         }
 
-        // 교사 쪽에서도 hasChest 플래그 세팅
         state.activeChestTiles.forEach(idx => {
           if (tiles[idx]) tiles[idx].hasChest = true;
         });
       }
 
-      // 3) 실제 렌더링
+      // ★ 학생의 "연구소 시야" 계산 (내 말 기준 2칸 이내)
+      let visibleRegionForStudent = null;
+      if (NetState.roomId && !NetState.isTeacher) {
+        const myPlayer = GameState.entities.find(
+          e => e.type === "player" && e.id === NetState.playerId
+        );
+        if (myPlayer) {
+          const origin = myPlayer.tileIndex;
+          const s = new Set();
+          s.add(origin);
 
+          const n1 = getNeighborIndices(origin);
+          n1.forEach(n => s.add(n));
+          n1.forEach(n => {
+            getNeighborIndices(n).forEach(nn => s.add(nn));
+          });
+
+          visibleRegionForStudent = s;
+        }
+      }
+
+      // 3) 실제 렌더링
       for (let i = 0; i < NUM_TILES; i++) {
         const t = tiles[i];
         const el = state.tileElements[i];
@@ -1233,11 +1209,22 @@
 
         el.pop.textContent = t.total;
 
-        const hasChest =
-          state.vaccineFeatureEnabled && !!t.hasChest;
+        const isLabTile = !!t.hasChest;
+        let showLab = false;
+
+        if (state.vaccineFeatureEnabled && isLabTile) {
+          if (!NetState.roomId || NetState.isTeacher) {
+            // 싱글/교사: 항상 연구소 보임
+            showLab = true;
+          } else if (visibleRegionForStudent && visibleRegionForStudent.has(i)) {
+            // 학생: 내 말 기준 2칸 이내만 보임
+            showLab = true;
+          }
+        }
 
         // SVG 타일 색칠
-        if (hasChest) {
+        if (showLab) {
+          // 연구소 타일: 약간 파란색 톤
           el.path.style.fill = "rgba(200, 220, 255, 0.9)";
         } else {
           const infratio = t.total > 0 ? t.infected / t.total : 0;
@@ -1258,7 +1245,7 @@
           const vaccineG = 220;
           const vaccineB = 0;
 
-          const alpha = vacRatio; // 0 ~ 1 : 백신 비율이 곧 섞는 비율
+          const alpha = vacRatio; // 0 ~ 1
 
           const r = Math.round(baseR * (1 - alpha) + vaccineR * alpha);
           const g = Math.round(baseG * (1 - alpha) + vaccineG * alpha);
@@ -1281,7 +1268,6 @@
               "piece player" + (p.infected ? " infected" : "");
           }
 
-          // ★ 내 말이면 주황색 테두리 추가
           if (NetState.playerId && p.id === NetState.playerId) {
             d.classList.add("me");
           }
@@ -1324,11 +1310,9 @@
 
       let inf;
 
-      // 학생 모드: 서버에서 받은 감염 수 사용
       if (NetState.roomId && !NetState.isTeacher && state.remoteInfectedTotal != null) {
         inf = state.remoteInfectedTotal;
       } else {
-        // 교사/싱글 모드: 로컬 계산
         inf = computeInfectedCount();
       }
 
@@ -1340,14 +1324,13 @@
         UI.statOpenedChests.textContent = "-";
         UI.statVaccineStatus.textContent = "비활성화";
       } else {
-        UI.statOpenedChests.textContent =
-          `${state.openedChestCount} / ${GameConfig.CHESTS_REQUIRED_FOR_VACCINE}`;
+        // ★ openedChestCount = 백신 개발률(0~100)
+        UI.statOpenedChests.textContent = `${state.openedChestCount}%`;
         UI.statVaccineStatus.textContent = state.vaccineActive
-          ? "개발 완료"
-          : "개발 전";
+          ? "완성"
+          : "개발 중";
       }
 
-      // 교사/싱글 모드에서만 히스토리 배열에 새 항목 추가
       if (!(NetState.roomId && !NetState.isTeacher)) {
         if (state.lastRecordedTurn !== state.currentTurn) {
           state.historyCumulativeInfected.push({
@@ -1377,9 +1360,10 @@
       state.cumulativeInfectedTotal = 0;
       state.lastNewInfected = 0;
       state.lastReproductionIndex = 0;
+
       state.activeChestTiles = new Set();
       state.chestWave = 0;
-      state.openedChestCount = 0;
+      state.openedChestCount = 0;  // ★ 백신 개발률 0%
       state.vaccineActive = false;
       state.playersMovedThisTurn = new Set();
 
@@ -1387,6 +1371,7 @@
       UI.logList.innerHTML = "";
 
       initEntities();
+      initLabs();       // ★ 연구소 다시 배치
       renderAll();
       addInitialLog();
       updateNewInfectedHistory();
@@ -1395,13 +1380,11 @@
     async function nextTurn() {
       const state = GameState;
 
-      // 학생이면 턴 진행 금지
       if (NetState.roomId && !NetState.isTeacher) {
         addLog("이 방에서는 교사만 턴을 진행할 수 있습니다.");
         return;
       }
 
-      // ---- 1) moves 읽어서 플레이어 이동 반영 (교사일 때) ----
       if (NetState.roomId && NetState.isTeacher && NetState.movesRef) {
         const movesSnap = await NetState.movesRef.get();
         const moves = movesSnap.val() || {};
@@ -1419,24 +1402,20 @@
           }
         }
 
-        // moves 초기화
         await NetState.movesRef.set(null);
       }
-      // ---- 2) 기존 nextTurn 로직 그대로 ----
 
       state.currentTurn++;
       state.playersMovedThisTurn = new Set();
 
-      spawnChestsIfNeeded();
+      // spawnChestsIfNeeded(); // 더 이상 사용 안 함
       stepMovement();
       stepPlayerAutoMovement(); 
-      openChestsByPlayers();
-      spreadVaccineFromPlayers();
-      const prevInfected = computeInfectedCount()
+      applyLabEffects();         // ★ 연구소 효과 적용
       const newInf = stepInfection();
-      GameState.cumulativeInfectedTotal += newInf;
+      state.cumulativeInfectedTotal += newInf;
       
-      GameState.historyNewInfected.push({
+      state.historyNewInfected.push({
         turn: state.currentTurn,
         newInfected: newInf
       });
@@ -1447,23 +1426,20 @@
       updateSelectedPlayerInfo();
       addLog(`새 감염자 ${newInf}명`);
 
-      // ---- 3) 교사라면 DB state 갱신 ----
       if (NetState.roomId && NetState.isTeacher && NetState.stateRef && NetState.playersRef) {
         const inf = computeInfectedCount();
         const tileStats = computeTileStats();
 
-        // /rooms/{roomId}/state 업데이트
         await NetState.stateRef.set({
           turn: state.currentTurn,
           vaccineReady: state.vaccineActive,
-          openedChests: state.openedChestCount,
+          openedChests: state.openedChestCount,  // ★ 백신 개발률 동기화
           infectedTotal: inf,
           cumulativeHistory: state.historyCumulativeInfected,
           newHistory: state.historyNewInfected,
           tiles: tileStats
         });
 
-        // /rooms/{roomId}/players/{playerId} 위치/상태 동기화
         const players = state.entities.filter(e => e.type === "player");
         for (const p of players) {
           await NetState.playersRef.child(p.id).update({
@@ -1479,17 +1455,14 @@
     // 11. 초기화 & 이벤트 연결
     // =========================
 
-    // 랜덤 방 ID 생성용 (간단 버전)
     function makeRandomRoomId() {
       return Math.random().toString(36).substring(2, 8).toUpperCase();
     }
 
-    // 교사: 새 방 만들기
     async function createRoomAsTeacher(nickname) {
       const roomId = makeRandomRoomId();
       const roomRef = rtdb.ref("rooms/" + roomId);
 
-      // 방 기본 state 기록
       await roomRef.set({
         createdAt: Date.now(),
         state: {
@@ -1508,13 +1481,11 @@
       NetState.movesRef = roomRef.child("moves");
       NetState.stateRef = roomRef.child("state");
 
-
       subscribeRoomState();
       subscribePlayers();
       alert(`방이 생성되었습니다!\n방 ID: ${roomId}\n이 코드를 학생들에게 알려주세요.`);
     }
 
-    // 학생: 기존 방에 참가
     async function joinRoomAsStudent(nickname, roomId) {
       const roomRef = rtdb.ref("rooms/" + roomId);
       const snap = await roomRef.get();
@@ -1532,7 +1503,6 @@
       NetState.movesRef = roomRef.child("moves");
       NetState.stateRef = roomRef.child("state");
 
-      // 로컬 플레이어 엔티티 중 아직 안 써먹은 걸 하나 할당
       const freePlayer = GameState.entities.find(e => e.type === "player" && !e._reserved);
       if (!freePlayer) {
         alert("더 이상 할당 가능한 플레이어 말이 없습니다. (최대 인원 초과)");
@@ -1556,9 +1526,6 @@
       alert(`방에 입장했습니다! (ID: ${roomId})`);
     }
 
-    // =========================
-    //  방 state 실시간 구독 (/rooms/{roomId}/state)
-    // =========================
     function subscribeRoomState() {
       if (!NetState.stateRef) return;
 
@@ -1566,18 +1533,14 @@
         const s = snapshot.val();
         if (!s) return;
 
-        // 교사는 자기 로컬 state가 진짜라서, DB 값으로 덮어쓰지 않음
         if (NetState.isTeacher) return;
 
-        // 기본 턴/백신/상자 정보
         GameState.currentTurn      = s.turn ?? GameState.currentTurn;
         GameState.openedChestCount = s.openedChests ?? GameState.openedChestCount;
         GameState.vaccineActive    = !!s.vaccineReady;
 
-        // 서버에서 보낸 감염 총합
         GameState.remoteInfectedTotal = s.infectedTotal ?? null;
 
-        // 히스토리(누적/신규)
         if (Array.isArray(s.cumulativeHistory)) {
           GameState.historyCumulativeInfected = s.cumulativeHistory;
         }
@@ -1585,11 +1548,9 @@
           GameState.historyNewInfected = s.newHistory;
         }
 
-        // 타일 요약 정보
         if (Array.isArray(s.tiles)) {
           GameState.remoteTileStats = s.tiles;
 
-          // 상자 위치도 여기서 세트로 재구성
           const chestSet = new Set();
           s.tiles.forEach((t, idx) => {
             if (t && t.hasChest) chestSet.add(idx);
@@ -1597,7 +1558,6 @@
           GameState.activeChestTiles = chestSet;
         }
 
-        // 히스토리 박스 다시 그리기
         updateInfectedHistory();
         updateNewInfectedHistory();
 
@@ -1606,9 +1566,6 @@
       });
     }
 
-    // =========================
-    //  players 실시간 구독 (/rooms/{roomId}/players)
-    // =========================
     function subscribePlayers() {
       if (!NetState.playersRef) return;
 
@@ -1616,26 +1573,20 @@
         const playersObj = snapshot.val() || {};
         const allPlayers = GameState.entities.filter(e => e.type === "player");
 
-        // DB에 있는 player 상태를 로컬 엔티티에 반영
         allPlayers.forEach(p => {
           const remote = playersObj[p.id];
 
           if (!remote) {
-            // DB에 없으면 사람 안 붙은 AI 말로 취급
             p.isHuman = false;
             return;
           }
 
-          // ✅ 학생/교사(사람이 조종하는 클라이언트)는
           if (!NetState.isTeacher) {
-            // 학생 클라이언트는 서버 값으로 동기화
-
             p.tileIndex  = remote.tileIndex ?? p.tileIndex;
             p.infected   = !!remote.infected;
             p.vaccinated = !!remote.vaccinated;
           }
   
-          // ★ role 보고 사람 말인지 표시
           p.isHuman = remote.role === "student" || remote.role === "teacher";
         });
 
@@ -1648,86 +1599,48 @@
     async function init() {
       await loadSVGMap();   // SVG 로드 끝날 때까지 기다림
       
-        // SVG 로드 → 타일/이웃 설정 완료 후 엔티티 초기화
-        initEntities();
-        renderAll();
-        addInitialLog();
-        updateSelectedPlayerInfo();
+      initEntities();
+      initLabs();      // ★ 연구소 초기 배치
+      renderAll();
+      addInitialLog();
+      updateSelectedPlayerInfo();
 
-        // === 멀티플레이: 역할 & 방 연결 ===
-        const isTeacher = confirm("교사(방장)로 접속하시나요? 확인=예, 취소=아니오");
-        const nickname = prompt("닉네임을 입력하세요", isTeacher ? "교사" : "학생");
+      const isTeacher = confirm("교사(방장)로 접속하시나요? 확인=예, 취소=아니오");
+      const nickname = prompt("닉네임을 입력하세요", isTeacher ? "교사" : "학생");
 
-        if (isTeacher) {
-          await createRoomAsTeacher(nickname || "교사");
+      if (isTeacher) {
+        await createRoomAsTeacher(nickname || "교사");
+      } else {
+        const roomId = prompt("참여할 방 ID를 입력하세요 (교사가 알려준 코드)");
+        if (roomId) {
+          await joinRoomAsStudent(nickname || "학생", roomId.trim());
         } else {
-          const roomId = prompt("참여할 방 ID를 입력하세요 (교사가 알려준 코드)");
-          if (roomId) {
-            await joinRoomAsStudent(nickname || "학생", roomId.trim());
-          } else {
-            alert("방 ID가 없어 싱글플레이 모드로 진행합니다.");
-          }
+          alert("방 ID가 없어 싱글플레이 모드로 진행합니다.");
         }
+      }
 
-        // 버튼 리스너 연결
-        UI.addDummyLogBtn.addEventListener("click", () =>
-          addLog("테스트 로그")
-        );
-        UI.nextTurnBtn.addEventListener("click", nextTurn);
-        UI.newGameBtn.addEventListener("click", resetGame);
+      UI.addDummyLogBtn.addEventListener("click", () =>
+        addLog("테스트 로그")
+      );
+      UI.nextTurnBtn.addEventListener("click", nextTurn);
+      UI.newGameBtn.addEventListener("click", resetGame);
 
-        UI.vaccineToggle.addEventListener("change", () => {
-          GameState.vaccineFeatureEnabled = UI.vaccineToggle.checked;
-          if (!GameState.vaccineFeatureEnabled) {
-            GameState.activeChestTiles = new Set();
-            GameState.chestWave = 0;
-            GameState.openedChestCount = 0;
-            GameState.vaccineActive = false;
-            addLog(
-              "백신 시스템이 비활성화되었습니다."
-            );
-          } else {
-            addLog(
-              "백신 시스템이 활성화되었습니다. 3턴 이후부터 보물상자가 등장합니다."
-            );
-          }
-          renderAll();
-        });
+      UI.vaccineToggle.addEventListener("change", () => {
+        GameState.vaccineFeatureEnabled = UI.vaccineToggle.checked;
+        if (!GameState.vaccineFeatureEnabled) {
+          addLog(
+            "백신/연구소 시스템이 비활성화되었습니다."
+          );
+        } else {
+          addLog(
+            "백신/연구소 시스템이 활성화되었습니다. 연구소를 찾아 백신 개발을 진행하세요."
+          );
+        }
+        renderAll();
+      });
     }
 
     init();
   </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
