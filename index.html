@@ -1463,13 +1463,19 @@
       const roomId = makeRandomRoomId();
       const roomRef = rtdb.ref("rooms/" + roomId);
 
+      const inf = computeInfectedCount();
+      const tileStats = computeTileStats();
+
       await roomRef.set({
         createdAt: Date.now(),
         state: {
           turn: GameState.currentTurn,
           vaccineReady: GameState.vaccineActive,
           openedChests: GameState.openedChestCount || 0,
-          infectedTotal: computeInfectedCount()
+          infectedTotal: inf,
+          cumulativeHistory: GameState.historyCumulativeInfected,
+          newHistory: GameState.historyNewInfected,
+          tiles: tileStats
         }
       });
 
@@ -1480,6 +1486,18 @@
       NetState.playersRef = roomRef.child("players");
       NetState.movesRef = roomRef.child("moves");
       NetState.stateRef = roomRef.child("state");
+
+      // 맵/플레이어 상태도 바로 DB에 반영 (학생이 들어왔을 때부터 동일하게 보이도록)
+      const players = GameState.entities.filter(e => e.type === "player");
+      for (const p of players) {
+        await NetState.playersRef.child(p.id).set({
+          name: p.id,          // 일단 기본 이름. 필요하면 수정 가능
+          role: "ai",          // 사람이 조종하지 않는 말
+          tileIndex: p.tileIndex,
+          infected: p.infected,
+          vaccinated: p.vaccinated
+        });
+      }
 
       subscribeRoomState();
       subscribePlayers();
@@ -1644,3 +1662,4 @@
   </script>
 </body>
 </html>
+
