@@ -1317,6 +1317,7 @@
         const tiles = [...Array(NUM_TILES)].map(() => ({
           total: 0,
           infected: 0,
+          vaccinatedCitizens: 0, // ★ 백신 맞은 시민 수
           hasChest: false
         }));
 
@@ -1324,6 +1325,11 @@
           const t = tiles[e.tileIndex];
           t.total++;
           if (e.infected) t.infected++;
+
+          // ★ 시민이면서, 백신 접종 상태면 카운트
+          if (e.type === "citizen" && e.vaccinated) {
+            t.vaccinatedCitizens++;
+          }
         }
 
         state.activeChestTiles.forEach(idx => {
@@ -1431,24 +1437,41 @@
           }
 
           if (showLab) {
+            // 연구소 타일은 계속 파란색 계열
             el.path.style.fill = "rgba(200, 220, 255, 0.9)";
           } else {
-            const infratio = t.total > 0 ? t.infected / t.total : 0;
+            const totalPop = t.total || 0;
+
+            // 감염 비율, 백신 접종 비율
+            const infectedRatio =
+              totalPop > 0 ? (t.infected || 0) / totalPop : 0;
+            const vaccinatedRatio =
+              totalPop > 0 ? (t.vaccinatedCitizens || 0) / totalPop : 0;
 
             let r, g, b;
-            if (infratio === 0) {
-              r = 250;
-              g = 250;
-              b = 250;
+
+            if (totalPop === 0) {
+              // 사람이 없으면 거의 흰색
+              r = g = b = 250;
             } else {
+              // 1단계: 감염 비율에 따라 빨간색 계열 (기존 로직 비슷)
               r = 255;
-              g = Math.round(250 * (1 - infratio));
-              b = Math.round(250 * (1 - infratio));
+              g = Math.round(255 * (1 - infectedRatio));
+              b = Math.round(255 * (1 - infectedRatio));
+
+              // 2단계: 백신 비율에 따라 초록색을 더해줌
+              //  - 백신 많을수록 R/B를 줄여서 초록색이 도드라지게
+              r -= Math.round(155 * vaccinatedRatio);
+              b -= Math.round(155 * vaccinatedRatio);
+
+              // 0~255 범위로 클램프
+              r = Math.max(0, Math.min(255, r));
+              g = Math.max(0, Math.min(255, g));
+              b = Math.max(0, Math.min(255, b));
             }
 
             el.path.style.fill = `rgb(${r}, ${g}, ${b})`;
           }
-
           const pieceContainer = el.pieces;
           pieceContainer.innerHTML = "";
 
@@ -1937,6 +1960,7 @@
     </script>
   </body>
   </html>
+
 
 
 
