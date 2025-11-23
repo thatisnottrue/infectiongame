@@ -856,7 +856,6 @@
     function stepPlayerAutoMovement() {
       const state = GameState;
       const chestTiles = Array.from(state.activeChestTiles);
-      if (chestTiles.length === 0) return;
       const N = GameConfig.NUM_TILES;
 
       // ① 상자가 "없을 때" → 완전 랜덤 이동
@@ -865,8 +864,6 @@
           if (p.type !== "player") continue;
           // 사람(교사/학생)이 조종하는 말은 자동 이동 제외
           if (p.isHuman) continue;
-          // 감염된 플레이어는 자동 이동 X
-          if (p.infected) continue;
           const neighbors = getNeighborIndices(p.tileIndex);
           if (neighbors.length === 0) continue;
 
@@ -1698,6 +1695,7 @@
   </script>
 </body>
 </html>
+
 
 
 
