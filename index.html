@@ -1,1856 +1,1803 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-  <meta charset="UTF-8" />
-  <title>전염병 확산 게임 - v3.0 (SVG 169타일 · 말 시각화)</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <style>
-    :root {
-      --bg: #f5f5f7;
-      --panel-bg: #ffffff;
-      --border: #d0d0dd;
-      --accent: #4a6fff;
-      --text-main: #222222;
-      --text-muted: #666666;
-      --radius-lg: 16px;
-      --shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.05);
-    }
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-        sans-serif;
-      background: var(--bg);
-      color: var(--text-main);
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: stretch;
-    }
-    .app {
-      width: 100%;
-      max-width: 1400px;
-      min-height: 100vh;
-      padding: 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-    header {
-      background: var(--panel-bg);
-      border-radius: var(--radius-lg);
-      padding: 12px 16px;
-      box-shadow: var(--shadow-soft);
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-    }
-    header h1 {
-      font-size: 1.1rem;
-      font-weight: 700;
-    }
-    .header-right {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      align-items: center;
-      font-size: 0.85rem;
-      color: var(--text-muted);
-    }
-    .badge {
-      padding: 4px 8px;
-      border-radius: 999px;
-      background: #eef0ff;
-      color: var(--accent);
-      font-weight: 600;
-      font-size: 0.75rem;
-    }
-    .btn {
-      border: none;
-      border-radius: 999px;
-      padding: 6px 12px;
-      font-size: 0.8rem;
-      cursor: pointer;
-      background: var(--accent);
-      color: #fff;
-      font-weight: 600;
-      transition: transform 0.08s ease;
-      box-shadow: 0 4px 12px rgba(74, 111, 255, 0.35);
-    }
-    .btn.secondary {
-      background: #ececf5;
-      color: var(--text-main);
-      box-shadow: none;
-    }
-    .btn:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 6px 16px rgba(74, 111, 255, 0.5);
-    }
-    main.layout {
-      flex: 1;
-      display: grid;
-      grid-template-columns: minmax(0, 2.8fr) minmax(0, 1.2fr);
-      gap: 12px;
-      min-height: 0;
-    }
-    .map-panel {
-      background: var(--panel-bg);
-      border-radius: var(--radius-lg);
-      padding: 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      box-shadow: var(--shadow-soft);
-    }
-    .panel-header {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.85rem;
-    }
-    .panel-header span:last-child {
-      color: var(--text-muted);
-    }
+  <!DOCTYPE html>
+  <html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <title>전염병 확산 게임 - v3.0 (SVG 169타일 · 말 시각화)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      :root {
+        --bg: #f5f5f7;
+        --panel-bg: #ffffff;
+        --border: #d0d0dd;
+        --accent: #4a6fff;
+        --text-main: #222222;
+        --text-muted: #666666;
+        --radius-lg: 16px;
+        --shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.05);
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        background: var(--bg);
+        color: var(--text-main);
+        min-height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: stretch;
+      }
+      .app {
+        width: 100%;
+        max-width: 1400px;
+        min-height: 100vh;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      header {
+        background: var(--panel-bg);
+        border-radius: var(--radius-lg);
+        padding: 12px 16px;
+        box-shadow: var(--shadow-soft);
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+      }
+      header h1 {
+        font-size: 1.1rem;
+        font-weight: 700;
+      }
+      .header-right {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        font-size: 0.85rem;
+        color: var(--text-muted);
+      }
+      .badge {
+        padding: 4px 8px;
+        border-radius: 999px;
+        background: #eef0ff;
+        color: var(--accent);
+        font-weight: 600;
+        font-size: 0.75rem;
+      }
+      .btn {
+        border: none;
+        border-radius: 999px;
+        padding: 6px 12px;
+        font-size: 0.8rem;
+        cursor: pointer;
+        background: var(--accent);
+        color: #fff;
+        font-weight: 600;
+        transition: transform 0.08s ease;
+        box-shadow: 0 4px 12px rgba(74, 111, 255, 0.35);
+      }
+      .btn.secondary {
+        background: #ececf5;
+        color: var(--text-main);
+        box-shadow: none;
+      }
+      .btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 16px rgba(74, 111, 255, 0.5);
+      }
+      main.layout {
+        flex: 1;
+        display: grid;
+        grid-template-columns: minmax(0, 2.8fr) minmax(0, 1.2fr);
+        gap: 12px;
+        min-height: 0;
+      }
+      .map-panel {
+        background: var(--panel-bg);
+        border-radius: var(--radius-lg);
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        box-shadow: var(--shadow-soft);
+      }
+      .panel-header {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.85rem;
+      }
+      .panel-header span:last-child {
+        color: var(--text-muted);
+      }
 
-    /* ===== SVG 맵 컨테이너 ===== */
-    .svg-map {
-      position: relative;
-      flex: 1;
-      overflow: auto;
-      background: #f9fafb;
-      border-radius: 10px;
-    }
-    .svg-map svg {
-      width: 100%;
-      height: auto;
-      display: block;
-    }
+      /* ===== SVG 맵 컨테이너 ===== */
+      .svg-map {
+        position: relative;
+        flex: 1;
+        overflow: auto;
+        background: #f9fafb;
+        border-radius: 10px;
+      }
+      .svg-map svg {
+        width: 100%;
+        height: auto;
+        display: block;
+      }
 
-    /* SVG 위에 덮는 오버레이 (말/텍스트) */
-    #overlayLayer {
-      position: absolute;
-      inset: 0;
-      pointer-events: none; /* 기본은 투명 레이어 */
-    }
+      /* SVG 위에 덮는 오버레이 (말/텍스트) */
+      #overlayLayer {
+        position: absolute;
+        inset: 0;
+        pointer-events: none; /* 기본은 투명 레이어 */
+      }
 
-    .tile-overlay {
-      position: absolute;
-      transform: translate(-50%, -50%);
-      font-size: 0.55rem;
-      border-radius: 4px;
-      padding: 2px 3px;
-      border: none;
-      pointer-events: auto; /* 이 박스는 클릭 허용 */
-    }
-    .tile-overlay.selected {
-      box-shadow: 0 0 0 2px rgba(74, 111, 255, 0.7);
-      border-color: var(--accent);
-    }
-    .tile-top {
-      font-weight: 600;
-      margin-bottom: 1px;
-      display: flex;
-      justify-content: space-between;
-      gap: 4px;
-    }
-    .tile-bottom {
-      display: flex;
-      flex-direction: column;
-      gap: 1px;
-    }
-    .tile-bottom span.label {
-      color: var(--text-muted);
-    }
+      .tile-overlay {
+        position: absolute;
+        transform: translate(-50%, -50%);
+        font-size: 0.55rem;
+        border-radius: 4px;
+        padding: 2px 3px;
+        border: none;
+        pointer-events: auto; /* 이 박스는 클릭 허용 */
+      }
+      .tile-overlay.selected {
+        box-shadow: 0 0 0 2px rgba(74, 111, 255, 0.7);
+        border-color: var(--accent);
+      }
+      .tile-top {
+        font-weight: 600;
+        margin-bottom: 1px;
+        display: flex;
+        justify-content: space-between;
+        gap: 4px;
+      }
+      .tile-bottom {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+      }
+      .tile-bottom span.label {
+        color: var(--text-muted);
+      }
 
-    .tile-pieces {
-      margin-top: 1px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 2px;
-    }
-    .piece {
-      width: 20px;
-      height: 20px;
-      box-sizing: border-box;
-      background-size: contain;
-      background-repeat: no-repeat;
-      background-position: center;
-      border: none;
-    }
-    .piece.player {
-      background-image: url("./assets/player-normal.svg");
-    }
-    .piece.infected {
-      background-image: url("./assets/player-infected.svg");
-    }
-    .piece.me {
-      box-shadow: 0 0 0 2px #ff9800; /* 주황색 테두리 */
-      border-radius: 50%;
-    }
+      .tile-pieces {
+        margin-top: 1px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2px;
+      }
+      .piece {
+        width: 20px;
+        height: 20px;
+        box-sizing: border-box;
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
+        border: none;
+      }
+      .piece.player {
+        background-image: url("./assets/player-normal.svg");
+      }
+      .piece.infected {
+        background-image: url("./assets/player-infected.svg");
+      }
+      .piece.me {
+        box-shadow: 0 0 0 2px #ff9800; /* 주황색 테두리 */
+        border-radius: 50%;
+      }
 
-    .side-panel {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-    .card {
-      background: var(--panel-bg);
-      border-radius: var(--radius-lg);
-      padding: 10px 12px;
-      box-shadow: var(--shadow-soft);
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 8px;
-    }
-    .stat-item {
-      border: 1px solid #ececf5;
-      border-radius: 10px;
-      padding: 8px;
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      font-size: 0.8rem;
-    }
-    .stat-label {
-      color: var(--text-muted);
-      font-size: 0.75rem;
-    }
-    .stat-value {
-      font-weight: 700;
-      font-size: 0.95rem;
-    }
-    .stat-note {
-      font-size: 0.7rem;
-      color: var(--text-muted);
-    }
-    .stat-history {
-      margin-top: 6px;
-      padding-top: 6px;
-      border-top: 1px dashed #ccc;
-      font-size: 0.75rem;
-      max-height: 120px;
-      overflow-y: auto;
-    }
-    .log-list {
-      list-style: none;
-      max-height: 160px;
-      overflow-y: auto;
-      font-size: 0.8rem;
-    }
-    footer {
-      font-size: 0.75rem;
-      color: var(--text-muted);
-      padding: 4px;
-    }
-    .toggle-label {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      font-size: 0.78rem;
-    }
-  </style>
-</head>
+      .side-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .card {
+        background: var(--panel-bg);
+        border-radius: var(--radius-lg);
+        padding: 10px 12px;
+        box-shadow: var(--shadow-soft);
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+      }
+      .stat-item {
+        border: 1px solid #ececf5;
+        border-radius: 10px;
+        padding: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        font-size: 0.8rem;
+      }
+      .stat-label {
+        color: var(--text-muted);
+        font-size: 0.75rem;
+      }
+      .stat-value {
+        font-weight: 700;
+        font-size: 0.95rem;
+      }
+      .stat-note {
+        font-size: 0.7rem;
+        color: var(--text-muted);
+      }
+      .stat-history {
+        margin-top: 6px;
+        padding-top: 6px;
+        border-top: 1px dashed #ccc;
+        font-size: 0.75rem;
+        max-height: 120px;
+        overflow-y: auto;
+      }
+      .log-list {
+        list-style: none;
+        max-height: 160px;
+        overflow-y: auto;
+        font-size: 0.8rem;
+      }
+      footer {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        padding: 4px;
+      }
+      .toggle-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.78rem;
+      }
+    </style>
+  </head>
 
-<body>
-  <div class="app">
-    <header>
-      <h1>전염병 확산 게임 — 싱글플레이 프로토타입 v3.0</h1>
-      <div class="header-right">
-        <span class="badge">GitHub + Netlify 배포</span>
-        <span>플레이어 25명 · 시민 30만명 · 타일 169개</span>
-        <button class="btn secondary" id="addDummyLogBtn">테스트 로그 추가</button>
-        <button class="btn secondary" id="newGameBtn">새 게임</button>
-        <button class="btn secondary" id="switchGameModeBtn" style="display:none;">게임 모드 전환</button>
-        <button class="btn" id="nextTurnBtn">다음 턴 진행</button>
-      </div>
-    </header>
-
-    <main class="layout">
-      <section class="map-panel">
-        <div class="panel-header">
-          <span>맵 (SVG 169 타일)</span>
-          <span>정육각형 SVG 맵 · 6방향 이동</span>
+  <body>
+    <div class="app">
+      <header>
+        <h1>전염병 확산 게임 — 싱글플레이 프로토타입 v3.0</h1>
+        <div class="header-right">
+          <span class="badge">GitHub + Netlify 배포</span>
+          <span>플레이어 25명 · 시민 30만명 · 타일 169개</span>
+          <button class="btn secondary" id="addDummyLogBtn">테스트 로그 추가</button>
+          <button class="btn secondary" id="newGameBtn">새 게임</button>
+          <button class="btn secondary" id="switchGameModeBtn" style="display:none;">게임 모드 전환</button>
+          <button class="btn" id="nextTurnBtn">다음 턴 진행</button>
         </div>
+      </header>
 
-        <div class="svg-map" id="svgMapContainer">
-          <!-- JS에서 map.svg 삽입 -->
-          <div id="overlayLayer"></div>
-        </div>
-      </section>
+      <main class="layout">
+        <section class="map-panel">
+          <div class="panel-header">
+            <span>맵 (SVG 169 타일)</span>
+            <span>정육각형 SVG 맵 · 6방향 이동</span>
+          </div>
 
-      <section class="side-panel">
-        <div class="card">
-          <div class="stats-grid">
-            <div class="stat-item">
-              <div class="stat-label">전체 인구</div>
-              <div class="stat-value" id="statTotal">525</div>
-              <div class="stat-note">플레이어 25 + 시민 300000</div>
-            </div>
-            <div class="stat-item">
-              <div class="stat-label">감염 인구</div>
-              <div class="stat-value" id="statInfected">0</div>
-              <div class="stat-note">플레이어 + 시민 합산</div>
-            </div>
-            <div class="stat-item">
-              <div class="stat-label">감염률</div>
-              <div class="stat-value" id="statRatio">0%</div>
-              <div class="stat-note">전체 대비 비율</div>
-            </div>
-            <div class="stat-item">
-              <div class="stat-label">현재 턴</div>
-              <div class="stat-value" id="statTurn">1</div>
-              <div class="stat-note">턴 제한 없음</div>
-            </div>
-            <div class="stat-item">
-              <!-- ★ 텍스트 수정: 열린 상자 수 → 백신 개발률 -->
-              <div class="stat-label">백신 개발률</div>
-              <!-- ★ 초기값 수정: 0 / 8 → 0% -->
-              <div class="stat-value" id="statOpenedChests">0%</div>
-              <!-- ★ 설명 수정 -->
-              <div class="stat-note">연구소 방문으로 증가/감소</div>
-            </div>
-            <div class="stat-item">
-              <div class="stat-label">백신 상태</div>
-              <div class="stat-value" id="statVaccineStatus">개발 전</div>
-              <div class="stat-note">
-                <label class="toggle-label">
-                  <input type="checkbox" id="vaccineToggle" checked />
-                  백신/연구소 시스템 사용
-                </label>
+          <div class="svg-map" id="svgMapContainer">
+            <!-- JS에서 map.svg 삽입 -->
+            <div id="overlayLayer"></div>
+          </div>
+        </section>
+
+        <section class="side-panel">
+          <div class="card">
+            <div class="stats-grid">
+              <div class="stat-item">
+                <div class="stat-label">전체 인구</div>
+                <div class="stat-value" id="statTotal">525</div>
+                <div class="stat-note">플레이어 25 + 시민 300000</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-label">감염 인구</div>
+                <div class="stat-value" id="statInfected">0</div>
+                <div class="stat-note">플레이어 + 시민 합산</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-label">감염률</div>
+                <div class="stat-value" id="statRatio">0%</div>
+                <div class="stat-note">전체 대비 비율</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-label">현재 턴</div>
+                <div class="stat-value" id="statTurn">1</div>
+                <div class="stat-note">턴 제한 없음</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-label">백신 개발률</div>
+                <div class="stat-value" id="statOpenedChests">0%</div>
+                <div class="stat-note">연구소 방문으로 증가/감소</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-label">백신 상태</div>
+                <div class="stat-value" id="statVaccineStatus">개발 전</div>
+                <div class="stat-note">
+                  <label class="toggle-label">
+                    <input type="checkbox" id="vaccineToggle" checked />
+                    백신/연구소 시스템 사용
+                  </label>
+                </div>
               </div>
             </div>
+
+            <div class="stat-history" id="infectedHistoryBox">
+              <div><b>턴별 누적 감염 인구 (기록용)</b></div>
+              <div>아직 데이터가 없습니다.</div>
+            </div>
+
+            <div class="stat-history" id="newInfectedHistoryBox">
+              <div><b>턴별 신규 감염자 수 (기록용)</b></div>
+              <div>아직 데이터가 없습니다.</div>
+            </div>
+
+            <div id="selectedPlayerInfo" style="margin-top:6px; font-size:0.78rem;">
+              선택된 플레이어: 없음 (타일을 클릭해서 플레이어 선택/이동)
+            </div>
           </div>
 
-          <div class="stat-history" id="infectedHistoryBox">
-            <div><b>턴별 누적 감염 인구 (기록용)</b></div>
-            <div>아직 데이터가 없습니다.</div>
+          <div class="card">
+            <div style="font-weight:600">턴 로그</div>
+            <ul class="log-list" id="logList"></ul>
           </div>
+        </section>
+      </main>
 
-          <div class="stat-history" id="newInfectedHistoryBox">
-            <div><b>턴별 신규 감염자 수 (기록용)</b></div>
-            <div>아직 데이터가 없습니다.</div>
-          </div>
-
-          <div id="selectedPlayerInfo" style="margin-top:6px; font-size:0.78rem;">
-            선택된 플레이어: 없음 (타일을 클릭해서 플레이어 선택/이동)
-          </div>
-        </div>
-
-        <div class="card">
-          <div style="font-weight:600">턴 로그</div>
-          <ul class="log-list" id="logList"></ul>
-        </div>
-      </section>
-    </main>
-
-    <footer>
-      ※ 이 버전은 SVG 맵(169타일) 위에서 플레이어/시민을 시각화하고, 감염 확산 패턴과 연구소·백신 개발을 관찰하기 위한 프로토타입입니다.
-    </footer>
-  </div>
+      <footer>
+        ※ 이 버전은 SVG 맵(169타일) 위에서 플레이어/시민을 시각화하고, 감염 확산 패턴과 연구소·백신 개발을 관찰하기 위한 프로토타입입니다.
+      </footer>
+    </div>
 
 
-  <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-database-compat.js"></script>
-  
+    <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-database-compat.js"></script>
+    
 
-  <script>
-    // =========================
-    // 0. Firebase 초기화 (Realtime DB)
-    // =========================
-    const firebaseConfig = {
-      apiKey: "AIzaSyD78qp_t_LZnXEnPHnKoaXB9RYLIsu82K4",
-      authDomain: "infectiongametest.firebaseapp.com",
-      databaseURL: "https://infectiongametest-default-rtdb.firebaseio.com",
-      projectId: "infectiongametest",
-      storageBucket: "infectiongametest.firebasestorage.app",
-      messagingSenderId: "1098044286154",
-      appId: "1:1098044286154:web:69cb7e1512172a974d0033",
-      measurementId: "G-G2TLQCTXSJ"
-    };
+    <script>
+      // =========================
+      // 0. Firebase 초기화 (Realtime DB)
+      // =========================
+      const firebaseConfig = {
+        apiKey: "AIzaSyD78qp_t_LZnXEnPHnKoaXB9RYLIsu82K4",
+        authDomain: "infectiongametest.firebaseapp.com",
+        databaseURL: "https://infectiongametest-default-rtdb.firebaseio.com",
+        projectId: "infectiongametest",
+        storageBucket: "infectiongametest.firebasestorage.app",
+        messagingSenderId: "1098044286154",
+        appId: "1:1098044286154:web:69cb7e1512172a974d0033",
+        measurementId: "G-G2TLQCTXSJ"
+      };
 
-    firebase.initializeApp(firebaseConfig);
-    const rtdb = firebase.database();
-      
-    // =========================
-    // 1. 설정 (Config)
-    // =========================
-    const GameConfig = {
-      NUM_TILES: 169,         // SVG 타일 개수에 맞춤 (0~168)
-      NUM_CITIZENS: 300000,      // 필요하면 여기서 시민 수 조절
-      NUM_PLAYERS: 25,
-      BASE_INFECTION_RATE: 0.55,   // 시민 감염 기본 80%
-      PLAYER_BASE_RATE: 1.0,      // 감염된 플레이어 → 시민 감염 시도 확률
-      VACCINE_REDUCTION_FACTOR: 0.05, // 백신 완성 후 감염률 95% 감소
-      RECOVERY_TURNS: 4,
+      firebase.initializeApp(firebaseConfig);
+      const rtdb = firebase.database();
+        
+      // =========================
+      // 1. 설정 (Config)
+      // =========================
+      const GameConfig = {
+        NUM_TILES: 169,         // SVG 타일 개수에 맞춤 (0~168)
+        NUM_CITIZENS: 300000,   // 필요하면 여기서 시민 수 조절
+        NUM_PLAYERS: 25,
+        BASE_INFECTION_RATE: 0.55,   // 시민 감염 기본 55%
+        PLAYER_BASE_RATE: 1.0,       // 감염된 플레이어 → 시민 감염 시도 확률
+        VACCINE_REDUCTION_FACTOR: 0.05,
+        RECOVERY_TURNS: 4,
 
-      // ★ 새 설정: 연구소 개수 & 백신 개발률 변화량
-      LAB_COUNT: 5,
-      VACCINE_PROGRESS_GAIN: 2,   
-      VACCINE_PROGRESS_LOSS: 20,
+        // 연구소 개수 & 백신 개발률 변화량
+        LAB_COUNT: 5,
+        VACCINE_PROGRESS_GAIN: 2,
+        VACCINE_PROGRESS_LOSS: 20,
 
-      // ★ 2번째 게임(백신 접종 모드)용 설정
-      MAX_VACCINE_DOSES_PER_PLAYER: 5, // 한 플레이어가 들고 다닐 수 있는 백신 최대 회수
-      VACCINATIONS_PER_TURN: 2         // 한 턴에 한 플레이어가 접종할 수 있는 시민 수
-    };
+        // 2번째 게임(백신 접종 모드)용 설정
+        MAX_VACCINE_DOSES_PER_PLAYER: 5, // 한 플레이어가 들고 다닐 수 있는 백신 최대 회수
+        VACCINATIONS_PER_TURN: 2         // 한 턴에 한 플레이어가 접종할 수 있는 시민 수
+      };
 
-    const GameModes = {
-      DEVELOPMENT: "development",   // 1편: 백신 개발 게임
-      VACCINATION: "vaccination"   // 2편: 백신 접종 게임
-    };
+      const GameModes = {
+        DEVELOPMENT: "development",   // 1편: 백신 개발 게임
+        VACCINATION: "vaccination"    // 2편: 백신 접종 게임
+      };
 
-    // =========================
-    // 2. 상태 (State)
-    // =========================
-    const GameState = {
-      currentTurn: 1,
-      entities: [],
+      // =========================
+      // 2. 상태 (State)
+      // =========================
+      const GameState = {
+        currentTurn: 1,
+        entities: [],
 
-      gameMode: GameModes.DEVELOPMENT,  // 현재 게임 모드 (기본: 1편 - 백신 개발)
+        gameMode: GameModes.DEVELOPMENT,  // 현재 게임 모드 (기본: 1편 - 백신 개발)
 
-      historyCumulativeInfected: [],
-      historyNewInfected: [],
-      lastRecordedTurn: 0,
-      cumulativeInfectedTotal: 0,
+        historyCumulativeInfected: [],
+        historyNewInfected: [],
+        lastRecordedTurn: 0,
+        cumulativeInfectedTotal: 0,
 
-      // ★ activeChestTiles = 연구소 위치 세트 (이름만 그대로 사용)
-      activeChestTiles: new Set(),
-      openedChestCount: 0,     // ★ "열린 상자 수" 대신 "백신 개발률(0~100)"로 사용
-      vaccineActive: false,    // ★ 백신 완성 여부
+        // activeChestTiles = 연구소 위치 세트
+        activeChestTiles: new Set(),
+        openedChestCount: 0,   // "열린 상자 수" 대신 "백신 개발률(0~100)"로 사용
+        vaccineActive: false,  // 백신 완성 여부
 
-      vaccineFeatureEnabled: true,
+        vaccineFeatureEnabled: true,
 
-      selectedPlayer: null,
-      selectedPlayerTileIndex: null,
-      playersMovedThisTurn: new Set(),
+        selectedPlayer: null,
+        selectedPlayerTileIndex: null,
+        playersMovedThisTurn: new Set(),
 
-      tileElements: [],      // [index] -> { path, overlay, pop, inf, ply, pieces }
-      tileCenters: [],       // [index] -> { x, y }
-      neighborMap: [],        // [index] -> [neighborIndex ...]
+        tileElements: [],      // [index] -> { path, overlay, pop, pieces }
+        tileCenters: [],       // [index] -> { x, y }
+        neighborMap: [],       // [index] -> [neighborIndex ...]
 
-      // ★ 서버(교사)에서 받은 요약값 저장용
-      remoteInfectedTotal: null,
-      remoteTileStats: null
-    };
+        // 서버(교사)에서 받은 요약값 저장용
+        remoteInfectedTotal: null,
+        remoteTileStats: null
+      };
 
-    // =========================
-    // 네트워크/멀티플레이 상태
-    // =========================
-    const NetState = {
-      roomId: null,
-      isTeacher: false,      // 교사(방장)인지
-      playerId: null,        // 이 브라우저에 할당된 player 엔티티 id (예: "P3")
-      nickname: null,
+      // =========================
+      // 네트워크/멀티플레이 상태
+      // =========================
+      const NetState = {
+        roomId: null,
+        isTeacher: false,      // 교사(방장)인지
+        playerId: null,        // 이 브라우저에 할당된 player 엔티티 id (예: "P3")
+        nickname: null,
 
-      roomRef: null,
-      playersRef: null,
-      movesRef: null,
-      stateRef: null
-    };
+        roomRef: null,
+        playersRef: null,
+        movesRef: null,
+        stateRef: null
+      };
 
-    // =========================
-    // 3. UI 요소 참조 (DOM)
-    // =========================
-    const UI = {
-      svgMapContainer: document.getElementById("svgMapContainer"),
-      overlayLayer: document.getElementById("overlayLayer"),
-      hexGrid: null, // 더 이상 사용 X (구 헥사맵 삭제)
+      // =========================
+      // 3. UI 요소 참조 (DOM)
+      // =========================
+      const UI = {
+        svgMapContainer: document.getElementById("svgMapContainer"),
+        overlayLayer: document.getElementById("overlayLayer"),
+        hexGrid: null,
 
-      logList: document.getElementById("logList"),
-      statTurn: document.getElementById("statTurn"),
-      statInfected: document.getElementById("statInfected"),
-      statRatio: document.getElementById("statRatio"),
-      statTotal: document.getElementById("statTotal"),
-      statOpenedChests: document.getElementById("statOpenedChests"),
-      statVaccineStatus: document.getElementById("statVaccineStatus"),
-      infectedHistoryBox: document.getElementById("infectedHistoryBox"),
-      newInfectedHistoryBox: document.getElementById("newInfectedHistoryBox"),
-      vaccineToggle: document.getElementById("vaccineToggle"),
-      selectedPlayerInfo: document.getElementById("selectedPlayerInfo"),
-      addDummyLogBtn: document.getElementById("addDummyLogBtn"),
-      nextTurnBtn: document.getElementById("nextTurnBtn"),
-      newGameBtn: document.getElementById("newGameBtn"),
-      switchGameModeBtn: document.getElementById("switchGameModeBtn")
-    };
+        logList: document.getElementById("logList"),
+        statTurn: document.getElementById("statTurn"),
+        statInfected: document.getElementById("statInfected"),
+        statRatio: document.getElementById("statRatio"),
+        statTotal: document.getElementById("statTotal"),
+        statOpenedChests: document.getElementById("statOpenedChests"),
+        statVaccineStatus: document.getElementById("statVaccineStatus"),
+        infectedHistoryBox: document.getElementById("infectedHistoryBox"),
+        newInfectedHistoryBox: document.getElementById("newInfectedHistoryBox"),
+        vaccineToggle: document.getElementById("vaccineToggle"),
+        selectedPlayerInfo: document.getElementById("selectedPlayerInfo"),
+        addDummyLogBtn: document.getElementById("addDummyLogBtn"),
+        nextTurnBtn: document.getElementById("nextTurnBtn"),
+        newGameBtn: document.getElementById("newGameBtn"),
+        switchGameModeBtn: document.getElementById("switchGameModeBtn")
+      };
 
-    UI.statTotal.textContent =
-      GameConfig.NUM_CITIZENS + GameConfig.NUM_PLAYERS;
+      UI.statTotal.textContent =
+        GameConfig.NUM_CITIZENS + GameConfig.NUM_PLAYERS;
 
-    // =========================
-    // 4. 유틸 함수
-    // =========================
-    const randInt = max => Math.floor(Math.random() * max);
+      // =========================
+      // 4. 유틸 함수
+      // =========================
+      const randInt = max => Math.floor(Math.random() * max);
 
-    function addLog(msg) {
-      const li = document.createElement("li");
-      li.textContent = `T${GameState.currentTurn} ${msg}`;
-      UI.logList.appendChild(li);
-      UI.logList.scrollTop = UI.logList.scrollHeight;
-    }
+      function addLog(msg) {
+        const li = document.createElement("li");
+        li.textContent = `T${GameState.currentTurn} ${msg}`;
+        UI.logList.appendChild(li);
+        UI.logList.scrollTop = UI.logList.scrollHeight;
+      }
 
-    function addInitialLog() {
-      const li = document.createElement("li");
-      li.textContent =
-        "T0 게임이 초기화되었습니다. 감염자 1명이 무작위 지정됨.";
-      UI.logList.appendChild(li);
-    }
+      function addInitialLog() {
+        const li = document.createElement("li");
+        li.textContent =
+          "T0 게임이 초기화되었습니다. 감염자 1명이 무작위 지정됨.";
+        UI.logList.appendChild(li);
+      }
 
-    function computeInfectedCount() {
-      return GameState.entities.filter(e => e.infected).length;
-    }
+      function computeInfectedCount() {
+        return GameState.entities.filter(e => e.infected).length;
+      }
 
-    // =========================
-    // 5. SVG 맵 로드 및 타일/이웃 설정
-    // =========================
-    function loadSVGMap() {
-      // Netlify 기준: ./assets/map.svg
-      return fetch("./assets/map.svg")
-        .then(res => res.text())
-        .then(svgText => {
-          UI.svgMapContainer.insertAdjacentHTML("afterbegin", svgText);
-          const svgElement = UI.svgMapContainer.querySelector("svg");
-          if (!svgElement) {
-            console.error("SVG를 찾을 수 없습니다.");
+      // =========================
+      // 5. SVG 맵 로드 및 타일/이웃 설정
+      // =========================
+      function loadSVGMap() {
+        return fetch("./assets/map.svg")
+          .then(res => res.text())
+          .then(svgText => {
+            UI.svgMapContainer.insertAdjacentHTML("afterbegin", svgText);
+            const svgElement = UI.svgMapContainer.querySelector("svg");
+            if (!svgElement) {
+              console.error("SVG를 찾을 수 없습니다.");
+              return;
+            }
+
+            const paths = svgElement.querySelectorAll("path[data-tile-index]");
+            const numTiles = paths.length;
+            console.log("SVG 타일 개수:", numTiles);
+
+            if (numTiles !== GameConfig.NUM_TILES) {
+              console.warn(
+                "GameConfig.NUM_TILES와 SVG 타일 수가 다릅니다. SVG 기준으로 맞춥니다."
+              );
+              GameConfig.NUM_TILES = numTiles;
+            }
+
+            let vb = svgElement.getAttribute("viewBox");
+            let viewW = 2300, viewH = 2006;
+            if (vb) {
+              const parts = vb.split(/\s+/).map(Number);
+              if (parts.length === 4) {
+                viewW = parts[2];
+                viewH = parts[3];
+              }
+            }
+
+            GameState.tileCenters = new Array(GameConfig.NUM_TILES);
+            paths.forEach(p => {
+              const idx = parseInt(p.getAttribute("data-tile-index"), 10);
+              const box = p.getBBox();
+              const cx = box.x + box.width / 2;
+              const cy = box.y + box.height / 2;
+              GameState.tileCenters[idx] = { x: cx, y: cy };
+            });
+
+            GameState.tileElements = new Array(GameConfig.NUM_TILES);
+            for (let i = 0; i < GameConfig.NUM_TILES; i++) {
+              const path = svgElement.querySelector(`path[data-tile-index="${i}"]`);
+              if (!path) continue;
+
+              const center = GameState.tileCenters[i];
+              const leftPercent = (center.x / viewW) * 100;
+              const topPercent = (center.y / viewH) * 100;
+
+              const overlay = document.createElement("div");
+              overlay.className = "tile-overlay";
+              overlay.style.left = leftPercent + "%";
+              overlay.style.top = topPercent + "%";
+              overlay.dataset.tileIndex = i;
+
+              overlay.innerHTML = `
+                <div class="tile-bottom">
+                  <div><span class="label">인구:</span> <span class="pop">0</span></div>
+                  <div class="tile-pieces"></div>
+                </div>
+              `;
+
+              overlay.addEventListener("click", (e) => {
+                e.stopPropagation();
+                onTileClick(i);
+              });
+              path.addEventListener("click", (e) => {
+                e.stopPropagation();
+                onTileClick(i);
+              });
+
+              UI.overlayLayer.appendChild(overlay);
+
+              GameState.tileElements[i] = {
+                path,
+                overlay,
+                pop: overlay.querySelector(".pop"),
+                pieces: overlay.querySelector(".tile-pieces")
+              };
+            }
+
+            buildNeighborMap();
+            console.log("SVG 기반 이웃 관계 설정 완료");
+          })
+          .catch(err => console.error("SVG 로드 오류:", err));
+      }
+
+      function buildNeighborMap() {
+        const N = GameConfig.NUM_TILES;
+        const centers = GameState.tileCenters;
+        GameState.neighborMap = new Array(N);
+
+        for (let i = 0; i < N; i++) {
+          const ci = centers[i];
+          if (!ci) continue;
+
+          const dists = [];
+          for (let j = 0; j < N; j++) {
+            if (i === j) continue;
+            const cj = centers[j];
+            if (!cj) continue;
+            const dx = cj.x - ci.x;
+            const dy = cj.y - ci.y;
+            const dist2 = dx * dx + dy * dy;
+            dists.push({ j, dist2 });
+          }
+
+          dists.sort((a, b) => a.dist2 - b.dist2);
+          if (dists.length === 0) {
+            GameState.neighborMap[i] = [];
+            continue;
+          }
+
+          const baseDist2 = dists[0].dist2;
+          const threshold = baseDist2 * 2.25;
+
+          const neighbors = [];
+          for (const d of dists) {
+            if (d.dist2 <= threshold && neighbors.length < 6) {
+              neighbors.push(d.j);
+            }
+          }
+          GameState.neighborMap[i] = neighbors;
+        }
+      }
+
+      // 타일 간 최소 이동 칸수(BFS 기반 거리 계산)
+      function getTileDistance(a, b, maxDepth = Infinity) {
+        if (a === b) return 0;
+
+        const visited = new Set();
+        visited.add(a);
+
+        let frontier = [a];
+        let dist = 0;
+
+        while (frontier.length > 0 && dist < maxDepth) {
+          dist++;
+          const next = [];
+
+          for (const cur of frontier) {
+            const neighbors = getNeighborIndices(cur);
+            for (const nb of neighbors) {
+              if (nb === b) {
+                return dist;
+              }
+              if (!visited.has(nb)) {
+                visited.add(nb);
+                next.push(nb);
+              }
+            }
+          }
+
+          frontier = next;
+        }
+
+        return Infinity;
+      }
+
+      function getNeighborIndices(i) {
+        return GameState.neighborMap[i] || [];
+      }
+
+      // 연구소(센터) 초기화
+      function initLabs() {
+        const state = GameState;
+        const { NUM_TILES, LAB_COUNT } = GameConfig;
+
+        state.activeChestTiles = new Set();
+        const targetCount = LAB_COUNT || 5;
+
+        const maxAttempts = NUM_TILES * 20;
+        let attempts = 0;
+
+        while (state.activeChestTiles.size < targetCount && attempts < maxAttempts) {
+          attempts++;
+          const candidate = randInt(NUM_TILES);
+
+          let ok = true;
+          for (const existing of state.activeChestTiles) {
+            const dist = getTileDistance(candidate, existing, 3);
+            if (dist <= 3) {
+              ok = false;
+              break;
+            }
+          }
+
+          if (!ok) continue;
+          state.activeChestTiles.add(candidate);
+        }
+
+        if (state.activeChestTiles.size < targetCount) {
+          console.warn("서로 4칸 이상 떨어진 연구소 배치가 완전히 되지 않았습니다.");
+          while (state.activeChestTiles.size < targetCount) {
+            state.activeChestTiles.add(randInt(NUM_TILES));
+          }
+        }
+
+        console.log("연구소(센터) 위치:", Array.from(state.activeChestTiles));
+      }
+
+      // =========================
+      // 6. 엔티티 초기화
+      // =========================
+      function initEntities() {
+        const { NUM_CITIZENS, NUM_PLAYERS, NUM_TILES } = GameConfig;
+        const ents = [];
+
+        // 시민 생성
+        for (let i = 0; i < NUM_CITIZENS; i++) {
+          ents.push({
+            id: "C" + i,
+            type: "citizen",
+            tileIndex: randInt(NUM_TILES),
+            infected: false,
+            infectedTurn: null,
+            recovered: false,
+            vaccinated: false      // 2번째 게임에서 사용
+          });
+        }
+
+        // 플레이어 생성
+        for (let i = 0; i < NUM_PLAYERS; i++) {
+          ents.push({
+            id: "P" + i,
+            type: "player",
+            tileIndex: randInt(NUM_TILES),
+            infected: false,
+            visitedLabs: new Set(),
+            vaccinated: false,     // 플레이어 자신이 접종 여부 (원하면 활용)
+            vaccineDoses: 0        // 들고 있는 백신 회수
+          });
+        }
+
+        const randP = NUM_CITIZENS + randInt(NUM_PLAYERS);
+        ents[randP].infected = true;
+        ents[randP].infectedTurn = 0;
+        GameState.cumulativeInfectedTotal = 1;
+        GameState.entities = ents;
+      }
+
+      // =========================
+      // 7. 플레이어 선택/이동
+      // =========================
+      function updateSelectedPlayerInfo() {
+        const { selectedPlayer, playersMovedThisTurn } = GameState;
+        if (!selectedPlayer) {
+          UI.selectedPlayerInfo.textContent =
+            "선택된 플레이어: 없음 (타일을 클릭해서 플레이어 선택)";
+          return;
+        }
+        const movedFlag = playersMovedThisTurn.has(selectedPlayer.id)
+          ? " / 이 턴 이동 완료"
+          : " / 이 턴 이동 가능";
+        UI.selectedPlayerInfo.textContent =
+          `선택된 플레이어: ${selectedPlayer.id} (현재 타일 #${selectedPlayer.tileIndex})${movedFlag}`;
+      }
+
+      function clearSelection() {
+        if (GameState.selectedPlayerTileIndex !== null) {
+          const el = GameState.tileElements[GameState.selectedPlayerTileIndex];
+          if (el && el.overlay) {
+            el.overlay.classList.remove("selected");
+          }
+        }
+        GameState.selectedPlayer = null;
+        GameState.selectedPlayerTileIndex = null;
+        updateSelectedPlayerInfo();
+      }
+
+      function selectPlayerOnTile(tileIndex) {
+        const player = GameState.entities.find(
+          e => e.type === "player" && e.tileIndex === tileIndex
+        );
+        if (!player) {
+          clearSelection();
+          return;
+        }
+        if (GameState.selectedPlayerTileIndex !== null) {
+          const prevEl = GameState.tileElements[GameState.selectedPlayerTileIndex];
+          if (prevEl && prevEl.overlay) {
+            prevEl.overlay.classList.remove("selected");
+          }
+        }
+        GameState.selectedPlayer = player;
+        GameState.selectedPlayerTileIndex = tileIndex;
+        const newEl = GameState.tileElements[tileIndex];
+        if (newEl && newEl.overlay) {
+          newEl.overlay.classList.add("selected");
+        }
+        updateSelectedPlayerInfo();
+      }
+
+      function onTileClick(tileIndex) {
+        const state = GameState;
+
+        if (NetState.roomId && !NetState.isTeacher) {
+          const myPlayer = state.entities.find(
+            e => e.type === "player" && e.id === NetState.playerId
+          );
+          if (!myPlayer) {
+            addLog("내 캐릭터를 찾을 수 없습니다.");
             return;
           }
 
-          const paths = svgElement.querySelectorAll("path[data-tile-index]");
-          const numTiles = paths.length;
-          console.log("SVG 타일 개수:", numTiles);
-
-          if (numTiles !== GameConfig.NUM_TILES) {
-            console.warn(
-              "GameConfig.NUM_TILES와 SVG 타일 수가 다릅니다. SVG 기준으로 맞춥니다."
-            );
-            GameConfig.NUM_TILES = numTiles;
+          const currentIndex = myPlayer.tileIndex;
+          if (tileIndex === currentIndex) {
+            addLog("현재 서 있는 타일은 다시 선택할 수 없습니다.");
+            return;
           }
 
-          // viewBox 기준 좌표 → 퍼센트로 변환하기 위해 viewBox 정보 사용
-          let vb = svgElement.getAttribute("viewBox");
-          let viewW = 2300, viewH = 2006;
-          if (vb) {
-            const parts = vb.split(/\s+/).map(Number);
-            if (parts.length === 4) {
-              viewW = parts[2];
-              viewH = parts[3];
-            }
+          const neighbors = getNeighborIndices(currentIndex);
+          if (!neighbors.includes(tileIndex)) {
+            addLog("인접한 타일만 이동 선택이 가능합니다.");
+            return;
           }
 
-          // 각 타일의 중심 좌표 계산
-          GameState.tileCenters = new Array(GameConfig.NUM_TILES);
-          paths.forEach(p => {
-            const idx = parseInt(p.getAttribute("data-tile-index"), 10);
-            const box = p.getBBox();
-            const cx = box.x + box.width / 2;
-            const cy = box.y + box.height / 2;
-            GameState.tileCenters[idx] = { x: cx, y: cy };
+          if (!NetState.movesRef || !NetState.playerId) {
+            addLog("서버와의 연결이 아직 준비되지 않았습니다.");
+            return;
+          }
+
+          NetState.movesRef.child(NetState.playerId).set({
+            region: tileIndex
           });
 
-          // 오버레이 타일 생성 (말/숫자 표시)
-          GameState.tileElements = new Array(GameConfig.NUM_TILES);
-          for (let i = 0; i < GameConfig.NUM_TILES; i++) {
-            const path = svgElement.querySelector(`path[data-tile-index="${i}"]`);
-            if (!path) continue;
-
-            const center = GameState.tileCenters[i];
-            const leftPercent = (center.x / viewW) * 100;
-            const topPercent = (center.y / viewH) * 100;
-
-            const overlay = document.createElement("div");
-            overlay.className = "tile-overlay";
-            overlay.style.left = leftPercent + "%";
-            overlay.style.top = topPercent + "%";
-            overlay.dataset.tileIndex = i;
-
-            overlay.innerHTML = `
-              <div class="tile-bottom">
-                <div><span class="label">인구:</span> <span class="pop">0</span></div>
-                <div class="tile-pieces"></div>
-              </div>
-            `;
-
-            // 클릭하면 해당 타일 선택 / 이동
-            overlay.addEventListener("click", (e) => {
-              e.stopPropagation();
-              onTileClick(i);
-            });
-            path.addEventListener("click", (e) => {
-              e.stopPropagation();
-              onTileClick(i);
-            });
-
-            UI.overlayLayer.appendChild(overlay);
-
-            GameState.tileElements[i] = {
-              path,
-              overlay,
-              pop: overlay.querySelector(".pop"),
-              pieces: overlay.querySelector(".tile-pieces")
-            };
-          }
-
-          // 이웃(6방향) 계산
-          buildNeighborMap();
-          console.log("SVG 기반 이웃 관계 설정 완료");
-        })
-        .catch(err => console.error("SVG 로드 오류:", err));
-    }
-
-    function buildNeighborMap() {
-      const N = GameConfig.NUM_TILES;
-      const centers = GameState.tileCenters;
-      GameState.neighborMap = new Array(N);
-
-      for (let i = 0; i < N; i++) {
-        const ci = centers[i];
-        if (!ci) continue;
-
-        const dists = [];
-        for (let j = 0; j < N; j++) {
-          if (i === j) continue;
-          const cj = centers[j];
-          if (!cj) continue;
-          const dx = cj.x - ci.x;
-          const dy = cj.y - ci.y;
-          const dist2 = dx * dx + dy * dy;
-          dists.push({ j, dist2 });
-        }
-
-        dists.sort((a, b) => a.dist2 - b.dist2);
-        if (dists.length === 0) {
-          GameState.neighborMap[i] = [];
-          continue;
-        }
-
-        const baseDist2 = dists[0].dist2;
-        const threshold = baseDist2 * 2.25; // (1.5)^2 정도
-
-        const neighbors = [];
-        for (const d of dists) {
-          if (d.dist2 <= threshold && neighbors.length < 6) {
-            neighbors.push(d.j);
-          }
-        }
-        GameState.neighborMap[i] = neighbors;
-      }
-    }
-
-    // ★★★ 여기서부터 getTileDistance 추가 ★★★
-    // 타일 간 최소 이동 칸수(BFS 기반 거리 계산)
-    function getTileDistance(a, b, maxDepth = Infinity) {
-      if (a === b) return 0;
-
-      const visited = new Set();
-      visited.add(a);
-
-      let frontier = [a];
-      let dist = 0;
-
-      while (frontier.length > 0 && dist < maxDepth) {
-        dist++;
-        const next = [];
-
-        for (const cur of frontier) {
-          const neighbors = getNeighborIndices(cur);
-          for (const nb of neighbors) {
-            if (nb === b) {
-              return dist; // b에 도달했으므로 dist가 거리
-            }
-            if (!visited.has(nb)) {
-              visited.add(nb);
-              next.push(nb);
-            }
-          }
-        }
-
-        frontier = next;
-      }
-
-      // maxDepth 안에 찾지 못하면 매우 먼 것으로 처리
-      return Infinity;
-    }
-    // ★★★ getTileDistance 끝 ★★★
-
-    function getNeighborIndices(i) {
-      return GameState.neighborMap[i] || [];
-    }
-
-    // ★ 연구소(센터) 초기화: 게임 시작 시부터 존재
-    function initLabs() {
-      const state = GameState;
-      const { NUM_TILES, LAB_COUNT } = GameConfig;
-
-      state.activeChestTiles = new Set();
-      const targetCount = LAB_COUNT || 5;
-
-      // 너무 운이 없어서 무한루프 방지
-      const maxAttempts = NUM_TILES * 20;
-      let attempts = 0;
-
-      while (state.activeChestTiles.size < targetCount && attempts < maxAttempts) {
-        attempts++;
-        const candidate = randInt(NUM_TILES);
-
-        // 기존 연구소들과 거리 검사 (최소 4칸 이상)
-        let ok = true;
-        for (const existing of state.activeChestTiles) {
-          const dist = getTileDistance(candidate, existing, 3);
-          // dist가 1/2/3이면 거리가 너무 가까움 → fail
-          if (dist <= 3) {
-            ok = false;
-            break;
-          }
-        }
-
-        if (!ok) continue;
-        state.activeChestTiles.add(candidate);
-      }
-
-      // 만약 안전 배치 실패 시 남은 수량은 아무 위치로 추가
-      if (state.activeChestTiles.size < targetCount) {
-        console.warn("서로 4칸 이상 떨어진 연구소 배치가 완전히 되지 않았습니다.");
-        while (state.activeChestTiles.size < targetCount) {
-          state.activeChestTiles.add(randInt(NUM_TILES));
-        }
-      }
-
-      console.log("연구소(센터) 위치:", Array.from(state.activeChestTiles));
-    }
-    // =========================
-    // 6. 엔티티 초기화
-    // =========================
-    function initEntities() {
-
-    // =========================
-    // 7. 플레이어 선택/이동
-    // =========================
-    function updateSelectedPlayerInfo() {
-      const { selectedPlayer, playersMovedThisTurn } = GameState;
-      if (!selectedPlayer) {
-        UI.selectedPlayerInfo.textContent =
-          "선택된 플레이어: 없음 (타일을 클릭해서 플레이어 선택)";
-        return;
-      }
-      const movedFlag = playersMovedThisTurn.has(selectedPlayer.id)
-        ? " / 이 턴 이동 완료"
-        : " / 이 턴 이동 가능";
-      UI.selectedPlayerInfo.textContent =
-        `선택된 플레이어: ${selectedPlayer.id} (현재 타일 #${selectedPlayer.tileIndex})${movedFlag}`;
-    }
-
-    function clearSelection() {
-      if (GameState.selectedPlayerTileIndex !== null) {
-        const el = GameState.tileElements[GameState.selectedPlayerTileIndex];
-        if (el && el.overlay) {
-          el.overlay.classList.remove("selected");
-        }
-      }
-      GameState.selectedPlayer = null;
-      GameState.selectedPlayerTileIndex = null;
-      updateSelectedPlayerInfo();
-    }
-
-    function selectPlayerOnTile(tileIndex) {
-      const player = GameState.entities.find(
-        e => e.type === "player" && e.tileIndex === tileIndex
-      );
-      if (!player) {
-        clearSelection();
-        return;
-      }
-      if (GameState.selectedPlayerTileIndex !== null) {
-        const prevEl = GameState.tileElements[GameState.selectedPlayerTileIndex];
-        if (prevEl && prevEl.overlay) {
-          prevEl.overlay.classList.remove("selected");
-        }
-      }
-      GameState.selectedPlayer = player;
-      GameState.selectedPlayerTileIndex = tileIndex;
-      const newEl = GameState.tileElements[tileIndex];
-      if (newEl && newEl.overlay) {
-        newEl.overlay.classList.add("selected");
-      }
-      updateSelectedPlayerInfo();
-    }
-
-    function onTileClick(tileIndex) {
-      const state = GameState;
-
-      // ---- 학생 모드: 이동 "선택"만 기록 ----
-      if (NetState.roomId && !NetState.isTeacher) {
-        // 자신의 플레이어 엔티티 찾기
-        const myPlayer = state.entities.find(
-          e => e.type === "player" && e.id === NetState.playerId
-        );
-        if (!myPlayer) {
-          addLog("내 캐릭터를 찾을 수 없습니다.");
+          addLog(`다음 턴 이동 선택: #${currentIndex} → #${tileIndex}`);
           return;
         }
 
-        const currentIndex = myPlayer.tileIndex;
+        if (!state.selectedPlayer) {
+          selectPlayerOnTile(tileIndex);
+          return;
+        }
+        const currentIndex = state.selectedPlayer.tileIndex;
+
         if (tileIndex === currentIndex) {
-          addLog("현재 서 있는 타일은 다시 선택할 수 없습니다.");
+          clearSelection();
+          return;
+        }
+
+        if (state.playersMovedThisTurn.has(state.selectedPlayer.id)) {
+          addLog(
+            `플레이어 ${state.selectedPlayer.id}는 이미 이 턴에 이동했습니다.`
+          );
+          updateSelectedPlayerInfo();
           return;
         }
 
         const neighbors = getNeighborIndices(currentIndex);
-        if (!neighbors.includes(tileIndex)) {
-          addLog("인접한 타일만 이동 선택이 가능합니다.");
+
+        if (neighbors.includes(tileIndex)) {
+          const from = currentIndex;
+          state.selectedPlayer.tileIndex = tileIndex;
+          state.selectedPlayerTileIndex = tileIndex;
+
+          state.playersMovedThisTurn.add(state.selectedPlayer.id);
+
+          const prevEl = state.tileElements[from];
+          const newEl = state.tileElements[tileIndex];
+          if (prevEl && prevEl.overlay) prevEl.overlay.classList.remove("selected");
+          if (newEl && newEl.overlay) newEl.overlay.classList.add("selected");
+
+          renderAll();
+          addLog(
+            `플레이어 ${state.selectedPlayer.id}가 타일 #${from} → #${tileIndex} 로 이동했습니다. (이 턴 이동 완료)`
+          );
+          updateSelectedPlayerInfo();
           return;
         }
 
-        if (!NetState.movesRef || !NetState.playerId) {
-          addLog("서버와의 연결이 아직 준비되지 않았습니다.");
-          return;
+        const otherPlayer = state.entities.find(
+          e => e.type === "player" && e.tileIndex === tileIndex
+        );
+        if (otherPlayer) {
+          selectPlayerOnTile(tileIndex);
         }
-
-        // /rooms/{roomId}/moves/{playerId} = { region: tileIndex }
-        NetState.movesRef.child(NetState.playerId).set({
-          region: tileIndex
-        });
-
-        addLog(`다음 턴 이동 선택: #${currentIndex} → #${tileIndex}`);
-        return; // 여기서 끝! 실제 이동은 교사가 턴을 진행할 때 처리
       }
 
-      // ---- 아래는 기존 onTileClick 로직(교사용) 계속 ----
-      
-      if (!state.selectedPlayer) {
-        selectPlayerOnTile(tileIndex);
-        return;
-      }
-      const currentIndex = state.selectedPlayer.tileIndex;
+      // =========================
+      // 8. 이동/감염/연구소(센터) 로직
+      // =========================
+      function stepMovement() {
+        const state = GameState;
+        for (const e of state.entities) {
+          if (e.type !== "citizen") continue;
 
-      if (tileIndex === currentIndex) {
-        clearSelection();
-        return;
-      }
-
-      if (state.playersMovedThisTurn.has(state.selectedPlayer.id)) {
-        addLog(
-          `플레이어 ${state.selectedPlayer.id}는 이미 이 턴에 이동했습니다.`
-        );
-        updateSelectedPlayerInfo();
-        return;
-      }
-
-      const neighbors = getNeighborIndices(currentIndex);
-
-      if (neighbors.includes(tileIndex)) {
-        const from = currentIndex;
-        state.selectedPlayer.tileIndex = tileIndex;
-        state.selectedPlayerTileIndex = tileIndex;
-
-        state.playersMovedThisTurn.add(state.selectedPlayer.id);
-
-        const prevEl = state.tileElements[from];
-        const newEl = state.tileElements[tileIndex];
-        if (prevEl && prevEl.overlay) prevEl.overlay.classList.remove("selected");
-        if (newEl && newEl.overlay) newEl.overlay.classList.add("selected");
-
-        renderAll();
-        addLog(
-          `플레이어 ${state.selectedPlayer.id}가 타일 #${from} → #${tileIndex} 로 이동했습니다. (이 턴 이동 완료)`
-        );
-        updateSelectedPlayerInfo();
-        return;
-      }
-
-      const otherPlayer = state.entities.find(
-        e => e.type === "player" && e.tileIndex === tileIndex
-      );
-      if (otherPlayer) {
-        selectPlayerOnTile(tileIndex);
-      }
-    }
-
-    // =========================
-    // 8. 이동/감염/연구소(센터) 로직
-    // =========================
-    function stepMovement() {
-      const state = GameState;
-      for (const e of state.entities) {
-        if (e.type !== "citizen") continue;
-
-        for (let step = 0; step < 2; step++) {
-          // 이동 확률
-          if (Math.random() < 0.7) {
-            const nei = getNeighborIndices(e.tileIndex);
-            if (nei.length > 0) { 
-              e.tileIndex = nei[randInt(nei.length)];
+          for (let step = 0; step < 2; step++) {
+            if (Math.random() < 0.7) {
+              const nei = getNeighborIndices(e.tileIndex);
+              if (nei.length > 0) { 
+                e.tileIndex = nei[randInt(nei.length)];
+              }
             }
           }
         }
       }
-    }
 
-    // ★★★ 기존 stepPlayerAutoMovement 전체 삭제하고, 아래로 교체 ★★★
-    function stepPlayerAutoMovement() {
-      const state = GameState;
-      const N = GameConfig.NUM_TILES;
+      function stepPlayerAutoMovement() {
+        const state = GameState;
+        const N = GameConfig.NUM_TILES;
 
-      const allLabs = Array.from(state.activeChestTiles || []);
+        const allLabs = Array.from(state.activeChestTiles || []);
 
-      // 연구소가 하나도 없으면 → 예전처럼 랜덤 이동만
-      if (allLabs.length === 0) {
+        if (allLabs.length === 0) {
+          for (const p of state.entities) {
+            if (p.type !== "player") continue;
+            if (p.isHuman) continue;
+
+            const neighbors = getNeighborIndices(p.tileIndex);
+            if (neighbors.length === 0) continue;
+
+            const r = neighbors[randInt(neighbors.length)];
+            p.tileIndex = r;
+            state.playersMovedThisTurn.add(p.id);
+          }
+          return;
+        }
+
         for (const p of state.entities) {
           if (p.type !== "player") continue;
-          if (p.isHuman) continue; // 사람(교사/학생)이 조종하는 말은 자동 이동 제외
+          if (p.isHuman) continue;
+
+          if (!p.visitedLabs) {
+            p.visitedLabs = new Set();
+          }
+
+          const targetLabs = allLabs.filter(idx => !p.visitedLabs.has(idx));
 
           const neighbors = getNeighborIndices(p.tileIndex);
           if (neighbors.length === 0) continue;
 
-          const r = neighbors[randInt(neighbors.length)];
-          p.tileIndex = r;
-          state.playersMovedThisTurn.add(p.id);
-        }
-        return;
-      }
-
-      // ★ 플레이어별로 "아직 안 간 연구소"만 목표로 삼아서 BFS
-      for (const p of state.entities) {
-        if (p.type !== "player") continue;
-        if (p.isHuman) continue; // 사람 조종 말 제외
-
-        if (!p.visitedLabs) {
-          p.visitedLabs = new Set();
-        }
-
-        // 이 플레이어가 아직 방문하지 않은 연구소 목록
-        const targetLabs = allLabs.filter(idx => !p.visitedLabs.has(idx));
-
-        const neighbors = getNeighborIndices(p.tileIndex);
-        if (neighbors.length === 0) continue;
-
-        // ▶ 모든 연구소를 이미 방문했다면: 그냥 랜덤 이동 (연구소 집착 X)
-        if (targetLabs.length === 0) {
-          const r = neighbors[randInt(neighbors.length)];
-          p.tileIndex = r;
-          state.playersMovedThisTurn.add(p.id);
-          continue;
-        }
-
-        // ▶ 아직 안 간 연구소들로부터 BFS 거리 계산
-        const dist = new Array(N).fill(Infinity);
-        const queue = [];
-
-        for (const t of targetLabs) {
-          dist[t] = 0;
-          queue.push(t);
-        }
-
-        while (queue.length > 0) {
-          const cur = queue.shift();
-          const nd = dist[cur] + 1;
-          const nbs = getNeighborIndices(cur);
-          for (const nb of nbs) {
-            if (nd < dist[nb]) {
-              dist[nb] = nd;
-              queue.push(nb);
-            }
-          }
-        }
-
-        const cur = p.tileIndex;
-        let best = null;
-        let bestDist = dist[cur];
-
-        // 이웃 중에서 "아직 안 간 연구소"에 더 가까워지는 곳 찾기
-        for (const nb of neighbors) {
-          if (dist[nb] < bestDist) {
-            bestDist = dist[nb];
-            best = nb;
-          }
-        }
-
-        if (best !== null && bestDist < Infinity) {
-          // 연구소(아직 안 간 곳) 쪽으로 한 칸 이동
-          p.tileIndex = best;
-        } else {
-          // 경로가 애매하면 그냥 랜덤 이동
-          const r = neighbors[randInt(neighbors.length)];
-          p.tileIndex = r;
-        }
-
-        state.playersMovedThisTurn.add(p.id);
-      }
-    }
-    // ★★★ stepPlayerAutoMovement 끝 ★★★
-
-    // ★ 연구소에 있는 플레이어들로부터 효과 적용
-    //  - 1편(개발 모드): 백신 개발률 up/down
-    //  - 2편(접종 모드): 연구소에서 백신 보급
-    function applyLabEffects() {
-      const state = GameState;
-      if (!state.vaccineFeatureEnabled) return;
-
-      // ──────────────────────────────
-      // 1편: 백신 개발 모드
-      // ──────────────────────────────
-      if (state.gameMode === GameModes.DEVELOPMENT) {
-        if (state.vaccineActive) return; // 이미 완성된 백신
-
-        const gain = GameConfig.VACCINE_PROGRESS_GAIN || 5;
-        const loss = GameConfig.VACCINE_PROGRESS_LOSS || 25;
-
-        let delta = 0;
-
-        // ★ 이번 턴에 연구소 위에 있는 플레이어들을 확인
-        for (const e of state.entities) {
-          if (e.type !== "player") continue;
-          if (!state.activeChestTiles.has(e.tileIndex)) continue; // 연구소 위가 아님
-
-          // ★ 플레이어별 방문 기록 세트 (없으면 생성)
-          if (!e.visitedLabs) {
-            e.visitedLabs = new Set();
-          }
-
-          // ★ 이 플레이어가 이 연구소(타일)에 이미 상호작용했다면 스킵
-          if (e.visitedLabs.has(e.tileIndex)) {
+          if (targetLabs.length === 0) {
+            const r = neighbors[randInt(neighbors.length)];
+            p.tileIndex = r;
+            state.playersMovedThisTurn.add(p.id);
             continue;
           }
 
-          // ★ 처음 상호작용하는 연구소이면, 이 플레이어 기준으로는 다시 못 쓰게 기록
-          e.visitedLabs.add(e.tileIndex);
+          const dist = new Array(N).fill(Infinity);
+          const queue = [];
 
-          // ★ 효과 적용: 감염 여부에 따라 백신 개발률 증감
-          if (e.infected) delta -= loss;
-          else delta += gain;
+          for (const t of targetLabs) {
+            dist[t] = 0;
+            queue.push(t);
+          }
+
+          while (queue.length > 0) {
+            const cur = queue.shift();
+            const nd = dist[cur] + 1;
+            const nbs = getNeighborIndices(cur);
+            for (const nb of nbs) {
+              if (nd < dist[nb]) {
+                dist[nb] = nd;
+                queue.push(nb);
+              }
+            }
+          }
+
+          const cur = p.tileIndex;
+          let best = null;
+          let bestDist = dist[cur];
+
+          for (const nb of neighbors) {
+            if (dist[nb] < bestDist) {
+              bestDist = dist[nb];
+              best = nb;
+            }
+          }
+
+          if (best !== null && bestDist < Infinity) {
+            p.tileIndex = best;
+          } else {
+            const r = neighbors[randInt(neighbors.length)];
+            p.tileIndex = r;
+          }
+
+          state.playersMovedThisTurn.add(p.id);
         }
-
-        // 이 턴에 백신 개발률 변화가 없으면 여기서 끝
-        if (delta === 0) return;
-
-        state.openedChestCount = Math.max(
-          0,
-          Math.min(100, state.openedChestCount + delta)
-        );
-
-        addLog(
-          `연구소 방문으로 백신 개발률이 ${delta > 0 ? "+" + delta : delta}% 변화했습니다. (현재 ${state.openedChestCount}%)`
-        );
-
-        if (state.openedChestCount >= 100 && !state.vaccineActive) {
-          state.vaccineActive = true;
-          addLog("백신이 완성되었습니다! 그런데.. 백신 접종은 어떻게 하죠?");
-        }
-
-        return;
       }
 
-      // ──────────────────────────────
-      // 2편: 백신 접종 모드
-      //   연구소 = 백신 보급소
-      // ──────────────────────────────
-      if (state.gameMode === GameModes.VACCINATION) {
-        const maxDoses = GameConfig.MAX_VACCINE_DOSES_PER_PLAYER || 5;
+      // 연구소에 있는 플레이어들로부터 효과 적용
+      //  - 1편(개발 모드): 백신 개발률 up/down
+      //  - 2편(접종 모드): 연구소에서 백신 보급
+      function applyLabEffects() {
+        const state = GameState;
+        if (!state.vaccineFeatureEnabled) return;
+
+        // 1편: 백신 개발 모드
+        if (state.gameMode === GameModes.DEVELOPMENT) {
+          if (state.vaccineActive) return;
+
+          const gain = GameConfig.VACCINE_PROGRESS_GAIN || 5;
+          const loss = GameConfig.VACCINE_PROGRESS_LOSS || 25;
+
+          let delta = 0;
+
+          for (const e of state.entities) {
+            if (e.type !== "player") continue;
+            if (!state.activeChestTiles.has(e.tileIndex)) continue;
+
+            if (!e.visitedLabs) {
+              e.visitedLabs = new Set();
+            }
+
+            if (e.visitedLabs.has(e.tileIndex)) {
+              continue;
+            }
+
+            e.visitedLabs.add(e.tileIndex);
+
+            if (e.infected) delta -= loss;
+            else delta += gain;
+          }
+
+          if (delta === 0) return;
+
+          state.openedChestCount = Math.max(
+            0,
+            Math.min(100, state.openedChestCount + delta)
+          );
+
+          addLog(
+            `연구소 방문으로 백신 개발률이 ${delta > 0 ? "+" + delta : delta}% 변화했습니다. (현재 ${state.openedChestCount}%)`
+          );
+
+          if (state.openedChestCount >= 100 && !state.vaccineActive) {
+            state.vaccineActive = true;
+            addLog("백신이 완성되었습니다! 그런데.. 백신 접종은 어떻게 하죠?");
+          }
+
+          return;
+        }
+
+        // 2편: 백신 접종 모드 (연구소 = 백신 보급소)
+        if (state.gameMode === GameModes.VACCINATION) {
+          const maxDoses = GameConfig.MAX_VACCINE_DOSES_PER_PLAYER || 5;
+
+          for (const e of state.entities) {
+            if (e.type !== "player") continue;
+            if (!state.activeChestTiles.has(e.tileIndex)) continue;
+
+            if (typeof e.vaccineDoses !== "number") {
+              e.vaccineDoses = 0;
+            }
+
+            if (e.vaccineDoses >= maxDoses) continue;
+
+            const gained = maxDoses - e.vaccineDoses;
+            e.vaccineDoses = maxDoses;
+
+            addLog(`플레이어 ${e.id}가 연구소에서 백신 ${gained}회분을 보급받았습니다. (현재 ${e.vaccineDoses}회분 보유)`);
+          }
+
+          return;
+        }
+      }
+        
+      function stepInfection() {
+        const {
+          NUM_TILES,
+          BASE_INFECTION_RATE,
+          PLAYER_BASE_RATE
+        } = GameConfig;
+        const state = GameState;
+
+        const tilePop = [...Array(NUM_TILES)].map(() => ({
+          citizens: [],
+          players: []
+        }));
 
         for (const e of state.entities) {
-          if (e.type !== "player") continue;
-          if (!state.activeChestTiles.has(e.tileIndex)) continue; // 연구소 위가 아님
-
-          if (typeof e.vaccineDoses !== "number") {
-            e.vaccineDoses = 0;
+          if (e.type === "citizen") {
+            tilePop[e.tileIndex].citizens.push(e);
+          } else if (e.type === "player") {
+            tilePop[e.tileIndex].players.push(e);
           }
-
-          // 이미 가득 차 있으면 스킵
-          if (e.vaccineDoses >= maxDoses) continue;
-
-          const gained = maxDoses - e.vaccineDoses;
-          e.vaccineDoses = maxDoses;
-
-          addLog(`플레이어 ${e.id}가 연구소에서 백신 ${gained}회분을 보급받았습니다. (현재 ${e.vaccineDoses}회분 보유)`);
         }
 
-        return;
-      }
-    }
-      
-    function stepInfection() {
-      const {
-        NUM_TILES,
-        BASE_INFECTION_RATE,
-        PLAYER_BASE_RATE
-      } = GameConfig;
-      const state = GameState;
+        let citizenRate = BASE_INFECTION_RATE;
+        let playerRate = PLAYER_BASE_RATE;
 
-      const tilePop = [...Array(NUM_TILES)].map(() => ({
-        citizens: [],
-        players: []
-      }));
+        let newInf = 0;
 
-      for (const e of state.entities) {
-        if (e.type === "citizen") {
-          tilePop[e.tileIndex].citizens.push(e);
-        } else if (e.type === "player") {
-          tilePop[e.tileIndex].players.push(e);
-        }
-      }
+        for (let t = 0; t < NUM_TILES; t++) {
+          const tile = tilePop[t];
+          const citizens = tile.citizens;
+          const players = tile.players;
 
-      // ★ 백신과 상관없이 항상 같은 감염률 사용
-      let citizenRate = BASE_INFECTION_RATE;
-      let playerRate = PLAYER_BASE_RATE;
+          const infectedPlayers = players.filter(p => p.infected);
+          const startInfCitizens = citizens.filter(
+            c => c.infected && !c.recovered
+          );
 
-      let newInf = 0;
+          // 건강한 시민 = 감염 X, 회복 X, 접종 X
+          let healthy = citizens.filter(
+            c => !c.infected && !c.recovered && !c.vaccinated
+          );
 
-      for (let t = 0; t < NUM_TILES; t++) {
-        const tile = tilePop[t];
-        const citizens = tile.citizens;
-        const players = tile.players;
-
-        // 1) 이 타일에 있는 감염된 플레이어 / 감염된 시민(회복자는 제외)
-        const infectedPlayers = players.filter(p => p.infected);
-        const startInfCitizens = citizens.filter(
-          c => c.infected && !c.recovered
-        );
-
-        // 2) 이 타일의 "건강한 시민" = 아직 감염 X, 회복 X, 접종 X
-        let healthy = citizens.filter(
-          c => !c.infected && !c.recovered && !c.vaccinated
-        );
-
-        // 감염된 플레이어 → 시민 1명 감염 시도
-        for (const p of infectedPlayers) {
-          if (healthy.length === 0) break;
-          
-          const idx = randInt(healthy.length);
-          const target = healthy[idx];
-
-          if (Math.random() < playerRate) {
-            target.infected = true;
-            target.infectedTurn = GameState.currentTurn;
-            newInf++;
-          }
-          healthy.splice(idx, 1);
-        }
-
-        // 감염된 시민 → 최대 2명 감염 시도
-        for (const src of startInfCitizens) {
-          for (let k = 0; k < 2; k++) {
+          // 감염된 플레이어 → 시민 1명 감염 시도
+          for (const p of infectedPlayers) {
             if (healthy.length === 0) break;
             
             const idx = randInt(healthy.length);
             const target = healthy[idx];
 
-            if (Math.random() < citizenRate) {
+            if (Math.random() < playerRate) {
               target.infected = true;
               target.infectedTurn = GameState.currentTurn;
               newInf++;
             }
             healthy.splice(idx, 1);
           }
+
+          // 감염된 시민 → 최대 2명 감염 시도
+          for (const src of startInfCitizens) {
+            for (let k = 0; k < 2; k++) {
+              if (healthy.length === 0) break;
+              
+              const idx = randInt(healthy.length);
+              const target = healthy[idx];
+
+              if (Math.random() < citizenRate) {
+                target.infected = true;
+                target.infectedTurn = GameState.currentTurn;
+                newInf++;
+              }
+              healthy.splice(idx, 1);
+            }
+          }
         }
-      }
-      
-      return newInf;
-    }
-
-    // 8-1. 백신 접종 단계 (2번째 게임 전용)
-    // =========================
-    function stepVaccination() {
-      const state = GameState;
-      const { NUM_TILES, VACCINATIONS_PER_TURN } = GameConfig;
-      const maxPerTurn = VACCINATIONS_PER_TURN || 1;
-
-      // 타일별 시민 목록 모으기
-      const tileCitizens = [...Array(NUM_TILES)].map(() => []);
-
-      for (const e of state.entities) {
-        if (e.type === "citizen") {
-          tileCitizens[e.tileIndex].push(e);
-        }
-      }
-
-      // 각 플레이어가 서 있는 타일에서 시민들에게 접종
-      for (const p of state.entities) {
-        if (p.type !== "player") continue;
-        if (!p.vaccineDoses || p.vaccineDoses <= 0) continue;
-
-        const citizensHere = tileCitizens[p.tileIndex];
-        if (!citizensHere || citizensHere.length === 0) continue;
-
-        // 아직 감염/회복되지 않았고, 접종받지 않은 시민만 대상
-        const targets = citizensHere.filter(
-          c => !c.infected && !c.recovered && !c.vaccinated
-        );
-
-        let done = 0;
-        while (done < maxPerTurn && p.vaccineDoses > 0 && targets.length > 0) {
-          const idx = randInt(targets.length);
-          const c = targets[idx];
-
-          c.vaccinated = true;
-          p.vaccineDoses--;
-          done++;
-
-          targets.splice(idx, 1);
-        }
-
-        if (done > 0) {
-          addLog(`플레이어 ${p.id}가 시민 ${done}명에게 백신을 접종했습니다. (잔여 백신: ${p.vaccineDoses}회분)`);
-        }
-      }
-    }
-
-    function stepRecovery() {
-      const RECOVERY_TURNS = GameConfig.RECOVERY_TURNS;
-
-      for (const e of GameState.entities) {
-        if (e.type !== "citizen") continue;
-        if (!e.infected) continue;
-        if (e.recovered) continue;
-
-        if (
-          e.infectedTurn !== null &&
-          GameState.currentTurn - e.infectedTurn >= RECOVERY_TURNS
-        ) {
-          e.infected = false;
-          e.recovered = true;   // 재감염 방지 플래그
-          e.infectedTurn = null;
-        }
-      }
-    }
-
-    // 교사 쪽에서 매 턴 끝나고 타일 요약 정보 만드는 함수
-    function computeTileStats() {
-      const { NUM_TILES } = GameConfig;
-      const state = GameState;
-
-      // 타일별 기본 구조
-      const tiles = [...Array(NUM_TILES)].map(() => ({
-        total: 0,
-        infected: 0,
-        hasChest: false   // ★ 연구소 여부
-      }));
-
-      // 시민/플레이어로부터 통계 쌓기
-      for (const e of state.entities) {
-        const t = tiles[e.tileIndex];
-        t.total++;
-        if (e.infected) t.infected++;
+        
+        return newInf;
       }
 
-      // 연구소 위치 표시 (hasChest)
-      state.activeChestTiles.forEach(idx => {
-        if (tiles[idx]) tiles[idx].hasChest = true;
-      });
+      // 8-1. 백신 접종 단계 (2번째 게임 전용)
+      function stepVaccination() {
+        const state = GameState;
+        const { NUM_TILES, VACCINATIONS_PER_TURN } = GameConfig;
+        const maxPerTurn = VACCINATIONS_PER_TURN || 1;
 
-      return tiles;
-    }
-
-    // =========================
-    // 9. 렌더링
-    // =========================
-    function renderTiles() {
-      const { NUM_TILES } = GameConfig;
-      const state = GameState;
-
-      let tiles;
-      let tileEntities;
-
-      // =========================
-      // 1) 학생 모드: 서버가 준 타일 요약값 사용
-      // =========================
-      if (NetState.roomId && !NetState.isTeacher && state.remoteTileStats) {
-        tiles = state.remoteTileStats;
-
-        tileEntities = [...Array(NUM_TILES)].map(() => ({
-          players: [],
-          citizens: []
-        }));
+        const tileCitizens = [...Array(NUM_TILES)].map(() => []);
 
         for (const e of state.entities) {
-          if (e.type === "player") {
-            tileEntities[e.tileIndex].players.push(e);
+          if (e.type === "citizen") {
+            tileCitizens[e.tileIndex].push(e);
+          }
+        }
+
+        for (const p of state.entities) {
+          if (p.type !== "player") continue;
+          if (!p.vaccineDoses || p.vaccineDoses <= 0) continue;
+
+          const citizensHere = tileCitizens[p.tileIndex];
+          if (!citizensHere || citizensHere.length === 0) continue;
+
+          const targets = citizensHere.filter(
+            c => !c.infected && !c.recovered && !c.vaccinated
+          );
+
+          let done = 0;
+          while (done < maxPerTurn && p.vaccineDoses > 0 && targets.length > 0) {
+            const idx = randInt(targets.length);
+            const c = targets[idx];
+
+            c.vaccinated = true;
+            p.vaccineDoses--;
+            done++;
+
+            targets.splice(idx, 1);
+          }
+
+          if (done > 0) {
+            addLog(`플레이어 ${p.id}가 시민 ${done}명에게 백신을 접종했습니다. (잔여 백신: ${p.vaccineDoses}회분)`);
           }
         }
       }
 
-      // =========================
-      // 2) 교사/싱글 모드: 로컬 상태에서 직접 계산
-      // =========================
-      else {
-        tiles = [...Array(NUM_TILES)].map(() => ({
+      function stepRecovery() {
+        const RECOVERY_TURNS = GameConfig.RECOVERY_TURNS;
+
+        for (const e of GameState.entities) {
+          if (e.type !== "citizen") continue;
+          if (!e.infected) continue;
+          if (e.recovered) continue;
+
+          if (
+            e.infectedTurn !== null &&
+            GameState.currentTurn - e.infectedTurn >= RECOVERY_TURNS
+          ) {
+            e.infected = false;
+            e.recovered = true;
+            e.infectedTurn = null;
+          }
+        }
+      }
+
+      function computeTileStats() {
+        const { NUM_TILES } = GameConfig;
+        const state = GameState;
+
+        const tiles = [...Array(NUM_TILES)].map(() => ({
           total: 0,
           infected: 0,
-          players: 0,
-          vaccinatedCitizens: 0,
           hasChest: false
-        }));
-
-        tileEntities = [...Array(NUM_TILES)].map(() => ({
-          players: [],
-          citizens: []
         }));
 
         for (const e of state.entities) {
           const t = tiles[e.tileIndex];
           t.total++;
           if (e.infected) t.infected++;
-
-          if (e.type === "player") {
-            t.players++;
-            tileEntities[e.tileIndex].players.push(e);
-          } else {
-            tileEntities[e.tileIndex].citizens.push(e);
-
-            if (e.vaccinated) {
-              t.vaccinatedCitizens++;
-            }
-          }
         }
 
-        // 연구소 표시
         state.activeChestTiles.forEach(idx => {
           if (tiles[idx]) tiles[idx].hasChest = true;
         });
-      }
 
-      // ★ 학생의 "연구소 시야" 계산 (내 말 기준 2칸 이내)
-      let visibleRegionForStudent = null;
-      if (NetState.roomId && !NetState.isTeacher) {
-        const myPlayer = GameState.entities.find(
-          e => e.type === "player" && e.id === NetState.playerId
-        );
-        if (myPlayer) {
-          const origin = myPlayer.tileIndex;
-          const s = new Set();
-          s.add(origin);
-
-          const n1 = getNeighborIndices(origin);
-          n1.forEach(n => s.add(n));
-          n1.forEach(n => {
-            getNeighborIndices(n).forEach(nn => s.add(nn));
-          });
-
-          visibleRegionForStudent = s;
-        }
+        return tiles;
       }
 
       // =========================
-      // 3) 실제 렌더링
+      // 9. 렌더링
       // =========================
-      for (let i = 0; i < NUM_TILES; i++) {
-        const t = tiles[i];
-        const el = state.tileElements[i];
-        if (!el) continue;
+      function renderTiles() {
+        const { NUM_TILES } = GameConfig;
+        const state = GameState;
 
-        el.pop.textContent = t.total;
+        let tiles;
+        let tileEntities;
 
-        const isLabTile = !!t.hasChest;
-        let showLab = false;
+        if (NetState.roomId && !NetState.isTeacher && state.remoteTileStats) {
+          tiles = state.remoteTileStats;
 
-        if (state.vaccineFeatureEnabled && isLabTile) {
-          if (!NetState.roomId || NetState.isTeacher) {
-            // 싱글/교사: 항상 연구소 보임
-            showLab = true;
-          } else if (visibleRegionForStudent && visibleRegionForStudent.has(i)) {
-            // 학생: 내 말 기준 2칸 이내만 보임
-            showLab = true;
+          tileEntities = [...Array(NUM_TILES)].map(() => ({
+            players: [],
+            citizens: []
+          }));
+
+          for (const e of state.entities) {
+            if (e.type === "player") {
+              tileEntities[e.tileIndex].players.push(e);
+            }
           }
-        }
-
-        // SVG 타일 색칠
-        if (showLab) {
-          // ★ 연구소는 항상 같은 색 (플레이어별 1회 제한만 로직으로 관리)
-          el.path.style.fill = "rgba(200, 220, 255, 0.9)";
         } else {
-          const infratio = t.total > 0 ? t.infected / t.total : 0;
+          tiles = [...Array(NUM_TILES)].map(() => ({
+            total: 0,
+            infected: 0,
+            players: 0,
+            vaccinatedCitizens: 0,
+            hasChest: false
+          }));
 
-          let r, g, b;
-          if (infratio === 0) {
-            r = 250;
-            g = 250;
-            b = 250;
-          } else {
-            r = 255;
-            g = Math.round(250 * (1 - infratio));
-            b = Math.round(250 * (1 - infratio));
+          tileEntities = [...Array(NUM_TILES)].map(() => ({
+            players: [],
+            citizens: []
+          }));
+
+          for (const e of state.entities) {
+            const t = tiles[e.tileIndex];
+            t.total++;
+            if (e.infected) t.infected++;
+
+            if (e.type === "player") {
+              t.players++;
+              tileEntities[e.tileIndex].players.push(e);
+            } else {
+              tileEntities[e.tileIndex].citizens.push(e);
+
+              if (e.vaccinated) {
+                t.vaccinatedCitizens++;
+              }
+            }
           }
 
-          el.path.style.fill = `rgb(${r}, ${g}, ${b})`;
-        }
-
-        // 말(토큰) 표시
-        const pieceContainer = el.pieces;
-        pieceContainer.innerHTML = "";
-
-        const playersHere = tileEntities[i].players;
-        playersHere.forEach(p => {
-          const d = document.createElement("div");
-          d.className = "piece player" + (p.infected ? " infected" : "");
-
-          if (NetState.playerId && p.id === NetState.playerId) {
-            d.classList.add("me");
-          }
-          pieceContainer.appendChild(d);
-        });
-      }
-    }
-
-    function updateInfectedHistory() {
-      const hist = GameState.historyCumulativeInfected;
-      if (hist.length === 0) {
-        UI.infectedHistoryBox.innerHTML =
-          "<div><b>턴별 누적 감염 인구 (기록용)</b></div><div>아직 데이터가 없습니다.</div>";
-        return;
-      }
-      let html = "<div><b>턴별 누적 감염 인구 (기록용)</b></div>";
-      for (const h of hist) {
-        html += `<div>T${h.turn}: ${h.infected}명</div>`;
-      }
-      UI.infectedHistoryBox.innerHTML = html;
-    }
-
-    function updateNewInfectedHistory() {
-      const hist = GameState.historyNewInfected;
-      if (hist.length === 0) {
-        UI.newInfectedHistoryBox.innerHTML =
-          "<div><b>턴별 신규 감염자 수 (기록용)</b></div><div>아직 데이터가 없습니다.</div>";
-        return;
-      }
-      let html = "<div><b>턴별 신규 감염자 수 (기록용)</b></div>";
-      for (const h of hist) {
-        html += `<div>T${h.turn}: ${h.newInfected}명</div>`;
-      }
-      UI.newInfectedHistoryBox.innerHTML = html;
-    }
-
-    function renderStats() {
-      const state = GameState;
-      const total = GameConfig.NUM_CITIZENS + GameConfig.NUM_PLAYERS;
-
-      let inf;
-
-      if (NetState.roomId && !NetState.isTeacher && state.remoteInfectedTotal != null) {
-        inf = state.remoteInfectedTotal;
-      } else {
-        inf = computeInfectedCount();
-      }
-
-      UI.statInfected.textContent = inf;
-      UI.statRatio.textContent = Math.round((inf / total) * 100) + "%";
-      UI.statTurn.textContent = state.currentTurn;
-
-      if (!state.vaccineFeatureEnabled) {
-        UI.statOpenedChests.textContent = "-";
-        UI.statVaccineStatus.textContent = "비활성화";
-      } else {
-        // ★ openedChestCount = 백신 개발률(0~100)
-        UI.statOpenedChests.textContent = `${state.openedChestCount}%`;
-        UI.statVaccineStatus.textContent = state.vaccineActive
-          ? "완성"
-          : "개발 중";
-      }
-
-      if (!(NetState.roomId && !NetState.isTeacher)) {
-        if (state.lastRecordedTurn !== state.currentTurn) {
-          state.historyCumulativeInfected.push({
-            turn: state.currentTurn,
-            infected: state.cumulativeInfectedTotal 
+          state.activeChestTiles.forEach(idx => {
+            if (tiles[idx]) tiles[idx].hasChest = true;
           });
-          state.lastRecordedTurn = state.currentTurn;
-          updateInfectedHistory();
         }
-      }
-    }
 
-    function renderAll() {
-      renderTiles();
-      renderStats();
-    }
+        let visibleRegionForStudent = null;
+        if (NetState.roomId && !NetState.isTeacher) {
+          const myPlayer = GameState.entities.find(
+            e => e.type === "player" && e.id === NetState.playerId
+          );
+          if (myPlayer) {
+            const origin = myPlayer.tileIndex;
+            const s = new Set();
+            s.add(origin);
 
-    // =========================
-    // 10. 새 게임 / 턴 진행
-    // =========================
-    function resetGame() {
-      const state = GameState;
-      state.currentTurn = 1;
-      state.historyCumulativeInfected = [];
-      state.historyNewInfected = [];
-      state.lastRecordedTurn = 0;
-      state.cumulativeInfectedTotal = 0;
-      state.lastNewInfected = 0;
-      state.lastReproductionIndex = 0;
+            const n1 = getNeighborIndices(origin);
+            n1.forEach(n => s.add(n));
+            n1.forEach(n => {
+              getNeighborIndices(n).forEach(nn => s.add(nn));
+            });
 
-      state.activeChestTiles = new Set();
-      state.openedChestCount = 0;  // ★ 백신 개발률 0%
-      state.vaccineActive = false;
-      state.playersMovedThisTurn = new Set();
-
-      clearSelection();
-      UI.logList.innerHTML = "";
-
-      initEntities();
-      initLabs();       // ★ 연구소 다시 배치
-      renderAll();
-      addInitialLog();
-      updateNewInfectedHistory();
-    }
-
-    function toggleGameMode() {
-      const state = GameState;
-
-      // 1편 → 2편 : 백신 개발 모드 → 백신 접종 모드
-      if (state.gameMode === GameModes.DEVELOPMENT) {
-        state.gameMode = GameModes.VACCINATION;
-
-        addLog("=== 상당히 오랜 시간이 지났습니다. ===");
-        addLog("과거 수많은 사람들을 죽음으로 몰고간 그 병이 다시 나타나기 시작했습니다.");
-        addLog("소문에 의하면 지난 시대의 과학자들이 백신을 만들었지만");
-        addLog("너무 늦어버린 탓에 사용도 못하고 죽음을 맞이했다네요.");
-        addLog("연구소에서 백신을 얻을 수 있을지도 모르겠어요.");
-
-        renderAll();
-        return;
-      }
-
-      // 2편 → 1편 : 백신 접종 모드 → 백신 개발 모드
-      if (state.gameMode === GameModes.VACCINATION) {
-        state.gameMode = GameModes.DEVELOPMENT;
-
-        addLog("=== 시간축이 거꾸로 흐르며, 다시 첫 번째 게임으로 돌아갑니다. ===");
-        addLog("도시는 아직 백신이 완성되지 않은 초기 감염 확산 단계입니다.");
-        addLog("연구소를 찾아다니며 백신 개발률을 높여야 합니다.");
-        addLog("이번에는 더 빠르게, 더 효율적으로 연구를 진행해 보세요.");
-
-        renderAll();
-        return;
-      }
-    }
-
-    async function nextTurn() {
-      const state = GameState;
-
-      if (NetState.roomId && !NetState.isTeacher) {
-        addLog("이 방에서는 교사만 턴을 진행할 수 있습니다.");
-        return;
-      }
-
-      if (NetState.roomId && NetState.isTeacher && NetState.movesRef) {
-        const movesSnap = await NetState.movesRef.get();
-        const moves = movesSnap.val() || {};
-
-        const players = state.entities.filter(e => e.type === "player");
-        for (const p of players) {
-          const m = moves[p.id];
-          if (!m) continue;
-
-          const dest = m.region;
-          const neighbors = getNeighborIndices(p.tileIndex);
-          if (neighbors.includes(dest)) {
-            p.tileIndex = dest;
-            addLog(`(적용) ${p.id} : #${p.tileIndex} → #${dest}`);
+            visibleRegionForStudent = s;
           }
         }
 
-        await NetState.movesRef.set(null);
+        for (let i = 0; i < NUM_TILES; i++) {
+          const t = tiles[i];
+          const el = state.tileElements[i];
+          if (!el) continue;
+
+          el.pop.textContent = t.total;
+
+          const isLabTile = !!t.hasChest;
+          let showLab = false;
+
+          if (state.vaccineFeatureEnabled && isLabTile) {
+            if (!NetState.roomId || NetState.isTeacher) {
+              showLab = true;
+            } else if (visibleRegionForStudent && visibleRegionForStudent.has(i)) {
+              showLab = true;
+            }
+          }
+
+          if (showLab) {
+            el.path.style.fill = "rgba(200, 220, 255, 0.9)";
+          } else {
+            const infratio = t.total > 0 ? t.infected / t.total : 0;
+
+            let r, g, b;
+            if (infratio === 0) {
+              r = 250;
+              g = 250;
+              b = 250;
+            } else {
+              r = 255;
+              g = Math.round(250 * (1 - infratio));
+              b = Math.round(250 * (1 - infratio));
+            }
+
+            el.path.style.fill = `rgb(${r}, ${g}, ${b})`;
+          }
+
+          const pieceContainer = el.pieces;
+          pieceContainer.innerHTML = "";
+
+          const playersHere = tileEntities[i].players;
+          playersHere.forEach(p => {
+            const d = document.createElement("div");
+            d.className = "piece player" + (p.infected ? " infected" : "");
+
+            if (NetState.playerId && p.id === NetState.playerId) {
+              d.classList.add("me");
+            }
+            pieceContainer.appendChild(d);
+          });
+        }
       }
 
-      state.currentTurn++;
-      state.playersMovedThisTurn = new Set();
-
-      // spawnChestsIfNeeded(); // 더 이상 사용 안 함
-      stepMovement();
-      stepPlayerAutoMovement(); 
-      applyLabEffects();         // ★ 연구소 효과 적용 (모드별로 다름)
-
-      // ★ 2번째 게임(백신 접종 모드)일 때만 접종 단계 실행
-      if (state.gameMode === GameModes.VACCINATION) {
-        stepVaccination();
+      function updateInfectedHistory() {
+        const hist = GameState.historyCumulativeInfected;
+        if (hist.length === 0) {
+          UI.infectedHistoryBox.innerHTML =
+            "<div><b>턴별 누적 감염 인구 (기록용)</b></div><div>아직 데이터가 없습니다.</div>";
+          return;
+        }
+        let html = "<div><b>턴별 누적 감염 인구 (기록용)</b></div>";
+        for (const h of hist) {
+          html += `<div>T${h.turn}: ${h.infected}명</div>`;
+        }
+        UI.infectedHistoryBox.innerHTML = html;
       }
 
-      const newInf = stepInfection();
-      state.cumulativeInfectedTotal += newInf;
-      
-      state.historyNewInfected.push({
-        turn: state.currentTurn,
-        newInfected: newInf
-      });
-      updateNewInfectedHistory();
-      
-      stepRecovery();
-      renderAll();
-      updateSelectedPlayerInfo();
-      addLog(`새 감염자 ${newInf}명`);
+      function updateNewInfectedHistory() {
+        const hist = GameState.historyNewInfected;
+        if (hist.length === 0) {
+          UI.newInfectedHistoryBox.innerHTML =
+            "<div><b>턴별 신규 감염자 수 (기록용)</b></div><div>아직 데이터가 없습니다.</div>";
+          return;
+        }
+        let html = "<div><b>턴별 신규 감염자 수 (기록용)</b></div>";
+        for (const h of hist) {
+          html += `<div>T${h.turn}: ${h.newInfected}명</div>`;
+        }
+        UI.newInfectedHistoryBox.innerHTML = html;
+      }
 
-      if (NetState.roomId && NetState.isTeacher && NetState.stateRef && NetState.playersRef) {
+      function renderStats() {
+        const state = GameState;
+        const total = GameConfig.NUM_CITIZENS + GameConfig.NUM_PLAYERS;
+
+        let inf;
+
+        if (NetState.roomId && !NetState.isTeacher && state.remoteInfectedTotal != null) {
+          inf = state.remoteInfectedTotal;
+        } else {
+          inf = computeInfectedCount();
+        }
+
+        UI.statInfected.textContent = inf;
+        UI.statRatio.textContent = Math.round((inf / total) * 100) + "%";
+        UI.statTurn.textContent = state.currentTurn;
+
+        if (!state.vaccineFeatureEnabled) {
+          UI.statOpenedChests.textContent = "-";
+          UI.statVaccineStatus.textContent = "비활성화";
+        } else {
+          UI.statOpenedChests.textContent = `${state.openedChestCount}%`;
+          UI.statVaccineStatus.textContent = state.vaccineActive
+            ? "완성"
+            : "개발 중";
+        }
+
+        if (!(NetState.roomId && !NetState.isTeacher)) {
+          if (state.lastRecordedTurn !== state.currentTurn) {
+            state.historyCumulativeInfected.push({
+              turn: state.currentTurn,
+              infected: state.cumulativeInfectedTotal 
+            });
+            state.lastRecordedTurn = state.currentTurn;
+            updateInfectedHistory();
+          }
+        }
+      }
+
+      function renderAll() {
+        renderTiles();
+        renderStats();
+      }
+
+      // =========================
+      // 10. 새 게임 / 턴 진행
+      // =========================
+      function resetGame() {
+        const state = GameState;
+        state.currentTurn = 1;
+        state.historyCumulativeInfected = [];
+        state.historyNewInfected = [];
+        state.lastRecordedTurn = 0;
+        state.cumulativeInfectedTotal = 0;
+        state.lastNewInfected = 0;
+        state.lastReproductionIndex = 0;
+
+        state.activeChestTiles = new Set();
+        state.openedChestCount = 0;
+        state.vaccineActive = false;
+        state.playersMovedThisTurn = new Set();
+
+        clearSelection();
+        UI.logList.innerHTML = "";
+
+        initEntities();
+        initLabs();
+        renderAll();
+        addInitialLog();
+        updateNewInfectedHistory();
+      }
+
+      function toggleGameMode() {
+        const state = GameState;
+
+        if (state.gameMode === GameModes.DEVELOPMENT) {
+          state.gameMode = GameModes.VACCINATION;
+
+          addLog("=== 상당히 오랜 시간이 지났습니다. ===");
+          addLog("과거 수많은 사람들을 죽음으로 몰고간 그 병이 다시 나타나기 시작했습니다.");
+          addLog("소문에 의하면 지난 시대의 과학자들이 백신을 만들었지만");
+          addLog("너무 늦어버린 탓에 사용도 못하고 죽음을 맞이했다네요.");
+          addLog("연구소에서 백신을 얻을 수 있을지도 모르겠어요.");
+
+          renderAll();
+          return;
+        }
+
+        if (state.gameMode === GameModes.VACCINATION) {
+          state.gameMode = GameModes.DEVELOPMENT;
+
+          addLog("=== 시간축이 거꾸로 흐르며, 다시 첫 번째 게임으로 돌아갑니다. ===");
+          addLog("도시는 아직 백신이 완성되지 않은 초기 감염 확산 단계입니다.");
+          addLog("연구소를 찾아다니며 백신 개발률을 높여야 합니다.");
+          addLog("이번에는 더 빠르게, 더 효율적으로 연구를 진행해 보세요.");
+
+          renderAll();
+          return;
+        }
+      }
+
+      async function nextTurn() {
+        const state = GameState;
+
+        if (NetState.roomId && !NetState.isTeacher) {
+          addLog("이 방에서는 교사만 턴을 진행할 수 있습니다.");
+          return;
+        }
+
+        if (NetState.roomId && NetState.isTeacher && NetState.movesRef) {
+          const movesSnap = await NetState.movesRef.get();
+          const moves = movesSnap.val() || {};
+
+          const players = state.entities.filter(e => e.type === "player");
+          for (const p of players) {
+            const m = moves[p.id];
+            if (!m) continue;
+
+            const dest = m.region;
+            const neighbors = getNeighborIndices(p.tileIndex);
+            if (neighbors.includes(dest)) {
+              p.tileIndex = dest;
+              addLog(`(적용) ${p.id} : #${p.tileIndex} → #${dest}`);
+            }
+          }
+
+          await NetState.movesRef.set(null);
+        }
+
+        state.currentTurn++;
+        state.playersMovedThisTurn = new Set();
+
+        stepMovement();
+        stepPlayerAutoMovement(); 
+        applyLabEffects();
+
+        if (state.gameMode === GameModes.VACCINATION) {
+          stepVaccination();
+        }
+
+        const newInf = stepInfection();
+        state.cumulativeInfectedTotal += newInf;
+        
+        state.historyNewInfected.push({
+          turn: state.currentTurn,
+          newInfected: newInf
+        });
+        updateNewInfectedHistory();
+        
+        stepRecovery();
+        renderAll();
+        updateSelectedPlayerInfo();
+        addLog(`새 감염자 ${newInf}명`);
+
+        if (NetState.roomId && NetState.isTeacher && NetState.stateRef && NetState.playersRef) {
+          const inf = computeInfectedCount();
+          const tileStats = computeTileStats();
+
+          await NetState.stateRef.set({
+            turn: state.currentTurn,
+            vaccineReady: state.vaccineActive,
+            openedChests: state.openedChestCount,
+            infectedTotal: inf,
+            cumulativeHistory: state.historyCumulativeInfected,
+            newHistory: state.historyNewInfected,
+            tiles: tileStats
+          });
+
+          const players = state.entities.filter(e => e.type === "player");
+          for (const p of players) {
+            await NetState.playersRef.child(p.id).update({
+              tileIndex: p.tileIndex,
+              infected: p.infected,
+            });
+          }
+        }
+      }
+
+      // =========================
+      // 11. 초기화 & 이벤트 연결
+      // =========================
+
+      function makeRandomRoomId() {
+        return Math.random().toString(36).substring(2, 8).toUpperCase();
+      }
+
+      async function createRoomAsTeacher(nickname) {
+        const roomId = makeRandomRoomId();
+        const roomRef = rtdb.ref("rooms/" + roomId);
+
         const inf = computeInfectedCount();
         const tileStats = computeTileStats();
 
-        await NetState.stateRef.set({
-          turn: state.currentTurn,
-          vaccineReady: state.vaccineActive,
-          openedChests: state.openedChestCount,  // ★ 백신 개발률 동기화
-          infectedTotal: inf,
-          cumulativeHistory: state.historyCumulativeInfected,
-          newHistory: state.historyNewInfected,
-          tiles: tileStats
+        await roomRef.set({
+          createdAt: Date.now(),
+          state: {
+            turn: GameState.currentTurn,
+            vaccineReady: GameState.vaccineActive,
+            openedChests: GameState.openedChestCount || 0,
+            infectedTotal: inf,
+            cumulativeHistory: GameState.historyCumulativeInfected,
+            newHistory: GameState.historyNewInfected,
+            tiles: tileStats
+          }
         });
 
-        const players = state.entities.filter(e => e.type === "player");
+        NetState.roomId = roomId;
+        NetState.isTeacher = true;
+        NetState.nickname = nickname;
+        NetState.roomRef = roomRef;
+        NetState.playersRef = roomRef.child("players");
+        NetState.movesRef = roomRef.child("moves");
+        NetState.stateRef = roomRef.child("state");
+
+        const players = GameState.entities.filter(e => e.type === "player");
         for (const p of players) {
-          await NetState.playersRef.child(p.id).update({
+          await NetState.playersRef.child(p.id).set({
+            name: p.id,
+            role: "ai",
             tileIndex: p.tileIndex,
-            infected: p.infected,
+            infected: p.infected
           });
         }
+
+        subscribeRoomState();
+        subscribePlayers();
+        alert(`방이 생성되었습니다!\n방 ID: ${roomId}\n이 코드를 학생들에게 알려주세요.`);
       }
-    }
 
-    // =========================
-    // 11. 초기화 & 이벤트 연결
-    // =========================
+      async function joinRoomAsStudent(nickname, roomId) {
+        const roomRef = rtdb.ref("rooms/" + roomId);
+        const snap = await roomRef.get();
 
-    function makeRandomRoomId() {
-      return Math.random().toString(36).substring(2, 8).toUpperCase();
-    }
-
-    async function createRoomAsTeacher(nickname) {
-      const roomId = makeRandomRoomId();
-      const roomRef = rtdb.ref("rooms/" + roomId);
-
-      const inf = computeInfectedCount();
-      const tileStats = computeTileStats();
-
-      await roomRef.set({
-        createdAt: Date.now(),
-        state: {
-          turn: GameState.currentTurn,
-          vaccineReady: GameState.vaccineActive,
-          openedChests: GameState.openedChestCount || 0,
-          infectedTotal: inf,
-          cumulativeHistory: GameState.historyCumulativeInfected,
-          newHistory: GameState.historyNewInfected,
-          tiles: tileStats
+        if (!snap.exists()) {
+          alert("해당 방 ID가 존재하지 않습니다.");
+          return;
         }
-      });
 
-      NetState.roomId = roomId;
-      NetState.isTeacher = true;
-      NetState.nickname = nickname;
-      NetState.roomRef = roomRef;
-      NetState.playersRef = roomRef.child("players");
-      NetState.movesRef = roomRef.child("moves");
-      NetState.stateRef = roomRef.child("state");
+        NetState.roomId = roomId;
+        NetState.isTeacher = false;
+        NetState.nickname = nickname;
+        NetState.roomRef = roomRef;
+        NetState.playersRef = roomRef.child("players");
+        NetState.movesRef = roomRef.child("moves");
+        NetState.stateRef = roomRef.child("state");
 
+        const playersSnap = await NetState.playersRef.get();
+        const playersObj = playersSnap.val() || {};
 
-      // 맵/플레이어 상태도 바로 DB에 반영 (학생이 들어왔을 때부터 동일하게 보이도록)
-      const players = GameState.entities.filter(e => e.type === "player");
-      for (const p of players) {
-        await NetState.playersRef.child(p.id).set({
-          name: p.id,          // 일단 기본 이름. 필요하면 수정 가능
-          role: "ai",          // 사람이 조종하지 않는 말
-          tileIndex: p.tileIndex,
-          infected: p.infected
+        let chosenId = null;
+        let remotePlayerInfo = null;
+        for (const [id, info] of Object.entries(playersObj)) {
+          if (!info.role || info.role === "ai") {
+            chosenId = id;
+            remotePlayerInfo = info;
+            break;
+          }
+        }
+
+        if (!chosenId) {
+          alert("더 이상 할당 가능한 플레이어 말이 없습니다. (최대 인원 초과)");
+          return;
+        }
+
+        const localPlayer = GameState.entities.find(
+          e => e.type === "player" && e.id === chosenId
+        );
+        if (!localPlayer) {
+          alert("로컬 플레이어 데이터를 찾을 수 없습니다.");
+          return;
+        }
+
+        localPlayer._reserved = true;
+        localPlayer.isHuman = true;
+        localPlayer.tileIndex  = remotePlayerInfo.tileIndex ?? localPlayer.tileIndex;
+        localPlayer.infected   = !!remotePlayerInfo.infected;
+        localPlayer.vaccinated = !!remotePlayerInfo.vaccinated;
+
+        NetState.playerId = chosenId;
+
+        await NetState.playersRef.child(chosenId).update({
+          name: nickname,
+          role: "student"
+        });
+
+        subscribeRoomState();
+        subscribePlayers();
+        alert(`방에 입장했습니다! (ID: ${roomId})`);
+      }
+
+      function subscribeRoomState() {
+        if (!NetState.stateRef) return;
+
+        NetState.stateRef.on("value", snapshot => {
+          const s = snapshot.val();
+          if (!s) return;
+
+          if (NetState.isTeacher) return;
+
+          GameState.currentTurn      = s.turn ?? GameState.currentTurn;
+          GameState.openedChestCount = s.openedChests ?? GameState.openedChestCount;
+          GameState.vaccineActive    = !!s.vaccineReady;
+
+          GameState.remoteInfectedTotal = s.infectedTotal ?? null;
+
+          if (Array.isArray(s.cumulativeHistory)) {
+            GameState.historyCumulativeInfected = s.cumulativeHistory;
+          }
+          if (Array.isArray(s.newHistory)) {
+            GameState.historyNewInfected = s.newHistory;
+          }
+
+          if (Array.isArray(s.tiles)) {
+            GameState.remoteTileStats = s.tiles;
+
+            const chestSet = new Set();
+            s.tiles.forEach((t, idx) => {
+              if (t && t.hasChest) chestSet.add(idx);
+            });
+            GameState.activeChestTiles = chestSet;
+          }
+
+          updateInfectedHistory();
+          updateNewInfectedHistory();
+
+          renderAll();
+          updateSelectedPlayerInfo();
         });
       }
 
-      subscribeRoomState();
-      subscribePlayers();
-      alert(`방이 생성되었습니다!\n방 ID: ${roomId}\n이 코드를 학생들에게 알려주세요.`);
-    }
+      function subscribePlayers() {
+        if (!NetState.playersRef) return;
 
-    async function joinRoomAsStudent(nickname, roomId) {
-      const roomRef = rtdb.ref("rooms/" + roomId);
-      const snap = await roomRef.get();
+        NetState.playersRef.on("value", snapshot => {
+          const playersObj = snapshot.val() || {};
+          const allPlayers = GameState.entities.filter(e => e.type === "player");
 
-      if (!snap.exists()) {
-        alert("해당 방 ID가 존재하지 않습니다.");
-        return;
-      }
+          allPlayers.forEach(p => {
+            const remote = playersObj[p.id];
 
-      NetState.roomId = roomId;
-      NetState.isTeacher = false;
-      NetState.nickname = nickname;
-      NetState.roomRef = roomRef;
-      NetState.playersRef = roomRef.child("players");
-      NetState.movesRef = roomRef.child("moves");
-      NetState.stateRef = roomRef.child("state");
+            if (!remote) {
+              p.isHuman = false;
+              return;
+            }
 
-            // ★ 1단계: 서버(교사)가 올려둔 players 목록에서 'ai' 역할인 말 하나 선택
-      const playersSnap = await NetState.playersRef.get();
-      const playersObj = playersSnap.val() || {};
-
-      let chosenId = null;
-      let remotePlayerInfo = null;
-      for (const [id, info] of Object.entries(playersObj)) {
-        if (!info.role || info.role === "ai") {
-          chosenId = id;
-          remotePlayerInfo = info;
-          break;
-        }
-      }
-
-      if (!chosenId) {
-        alert("더 이상 할당 가능한 플레이어 말이 없습니다. (최대 인원 초과)");
-        return;
-      }
-
-      const localPlayer = GameState.entities.find(
-        e => e.type === "player" && e.id === chosenId
-      );
-      if (!localPlayer) {
-        alert("로컬 플레이어 데이터를 찾을 수 없습니다.");
-        return;
-      }
-
-      // ★ 3단계: 로컬 말 상태를 서버(교사)의 위치/상태에 맞게 동기화
-      localPlayer._reserved = true;
-      localPlayer.isHuman = true;
-      localPlayer.tileIndex  = remotePlayerInfo.tileIndex ?? localPlayer.tileIndex;
-      localPlayer.infected   = !!remotePlayerInfo.infected;
-      localPlayer.vaccinated = !!remotePlayerInfo.vaccinated;
-
-      NetState.playerId = chosenId;
-
-      // ★ 4단계: 서버에는 이름과 role만 업데이트 (tileIndex는 교사 기준 그대로 유지)
-      await NetState.playersRef.child(chosenId).update({
-        name: nickname,
-        role: "student"
-      });
-
-      subscribeRoomState();
-      subscribePlayers();
-      alert(`방에 입장했습니다! (ID: ${roomId})`);
-    }
-
-    function subscribeRoomState() {
-      if (!NetState.stateRef) return;
-
-      NetState.stateRef.on("value", snapshot => {
-        const s = snapshot.val();
-        if (!s) return;
-
-        if (NetState.isTeacher) return;
-
-        GameState.currentTurn      = s.turn ?? GameState.currentTurn;
-        GameState.openedChestCount = s.openedChests ?? GameState.openedChestCount;
-        GameState.vaccineActive    = !!s.vaccineReady;
-
-        GameState.remoteInfectedTotal = s.infectedTotal ?? null;
-
-        if (Array.isArray(s.cumulativeHistory)) {
-          GameState.historyCumulativeInfected = s.cumulativeHistory;
-        }
-        if (Array.isArray(s.newHistory)) {
-          GameState.historyNewInfected = s.newHistory;
-        }
-
-        if (Array.isArray(s.tiles)) {
-          GameState.remoteTileStats = s.tiles;
-
-          const chestSet = new Set();
-          s.tiles.forEach((t, idx) => {
-            if (t && t.hasChest) chestSet.add(idx);
-          });
-          GameState.activeChestTiles = chestSet;
-        }
-
-        updateInfectedHistory();
-        updateNewInfectedHistory();
-
-        renderAll();
-        updateSelectedPlayerInfo();
-      });
-    }
-
-    function subscribePlayers() {
-      if (!NetState.playersRef) return;
-
-      NetState.playersRef.on("value", snapshot => {
-        const playersObj = snapshot.val() || {};
-        const allPlayers = GameState.entities.filter(e => e.type === "player");
-
-        allPlayers.forEach(p => {
-          const remote = playersObj[p.id];
-
-          if (!remote) {
-            p.isHuman = false;
-            return;
-          }
-
-          if (!NetState.isTeacher) {
-            p.tileIndex  = remote.tileIndex ?? p.tileIndex;
-            p.infected   = !!remote.infected;
-          }
-  
-          p.isHuman = remote.role === "student" || remote.role === "teacher";
-        });
-
-        renderAll();
-        updateSelectedPlayerInfo();
-      });
-    }
-
+            if (!NetState.isTeacher) {
+              p.tileIndex  = remote.tileIndex ?? p.tileIndex;
+              p.infected   = !!remote.infected;
+            }
     
-    async function init() {
-      await loadSVGMap();   // SVG 로드 끝날 때까지 기다림
+            p.isHuman = remote.role === "student" || remote.role === "teacher";
+          });
+
+          renderAll();
+          updateSelectedPlayerInfo();
+        });
+      }
+
       
-      initEntities();
-      initLabs();      // ★ 연구소 초기 배치
-      renderAll();
-      addInitialLog();
-      updateSelectedPlayerInfo();
-
-      const isTeacher = confirm("교사(방장)로 접속하시나요? 확인=예, 취소=아니오");
-      const nickname = prompt("닉네임을 입력하세요", isTeacher ? "교사" : "학생");
-
-      if (isTeacher) {
-        await createRoomAsTeacher(nickname || "교사");
-      } else {
-        const roomId = prompt("참여할 방 ID를 입력하세요 (교사가 알려준 코드)");
-        if (roomId) {
-          await joinRoomAsStudent(nickname || "학생", roomId.trim());
-        } else {
-          alert("방 ID가 없어 싱글플레이 모드로 진행합니다.");
-        }
-      }
-
-      if (isTeacher) {
-        // 교사는 게임 모드 전환 버튼을 볼 수 있음
-        UI.switchGameModeBtn.style.display = "inline-block";
-      } else {
-        // 학생은 버튼을 숨김
-        UI.switchGameModeBtn.style.display = "none";
-      }
-
-      UI.addDummyLogBtn.addEventListener("click", () =>
-        addLog("테스트 로그")
-      );
-      UI.nextTurnBtn.addEventListener("click", nextTurn);
-      UI.newGameBtn.addEventListener("click", resetGame);
-      UI.switchGameModeBtn.addEventListener("click", toggleGameMode);
-
-      UI.vaccineToggle.addEventListener("change", () => {
-        GameState.vaccineFeatureEnabled = UI.vaccineToggle.checked;
-        if (!GameState.vaccineFeatureEnabled) {
-          addLog(
-            "백신/연구소 시스템이 비활성화되었습니다."
-          );
-        } else {
-          addLog(
-            "백신/연구소 시스템이 활성화되었습니다. 연구소를 찾아 백신 개발을 진행하세요."
-          );
-        }
+      async function init() {
+        await loadSVGMap();
+        
+        initEntities();
+        initLabs();
         renderAll();
-      });
-    }
+        addInitialLog();
+        updateSelectedPlayerInfo();
 
-    init();
-  </script>
-</body>
-</html>
+        const isTeacher = confirm("교사(방장)로 접속하시나요? 확인=예, 취소=아니오");
+        const nickname = prompt("닉네임을 입력하세요", isTeacher ? "교사" : "학생");
 
+        if (isTeacher) {
+          await createRoomAsTeacher(nickname || "교사");
+        } else {
+          const roomId = prompt("참여할 방 ID를 입력하세요 (교사가 알려준 코드)");
+          if (roomId) {
+            await joinRoomAsStudent(nickname || "학생", roomId.trim());
+          } else {
+            alert("방 ID가 없어 싱글플레이 모드로 진행합니다.");
+          }
+        }
 
+        if (isTeacher) {
+          UI.switchGameModeBtn.style.display = "inline-block";
+        } else {
+          UI.switchGameModeBtn.style.display = "none";
+        }
 
+        UI.addDummyLogBtn.addEventListener("click", () =>
+          addLog("테스트 로그")
+        );
+        UI.nextTurnBtn.addEventListener("click", nextTurn);
+        UI.newGameBtn.addEventListener("click", resetGame);
+        UI.switchGameModeBtn.addEventListener("click", toggleGameMode);
 
+        UI.vaccineToggle.addEventListener("change", () => {
+          GameState.vaccineFeatureEnabled = UI.vaccineToggle.checked;
+          if (!GameState.vaccineFeatureEnabled) {
+            addLog(
+              "백신/연구소 시스템이 비활성화되었습니다."
+            );
+          } else {
+            addLog(
+              "백신/연구소 시스템이 활성화되었습니다. 연구소를 찾아 백신 개발을 진행하세요."
+            );
+          }
+          renderAll();
+        });
+      }
 
+      init();
+    </script>
+  </body>
+  </html>
