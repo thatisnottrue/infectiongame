@@ -187,9 +187,6 @@
     .piece.infected {
       background-image: url("./assets/player-infected.svg");
     }
-    .piece.vaccinated {
-      background-image: url("./assets/player-vaccinated.svg");
-    }
     .piece.me {
       box-shadow: 0 0 0 2px #ff9800; /* 주황색 테두리 */
       border-radius: 50%;
@@ -392,7 +389,6 @@
       BASE_INFECTION_RATE: 0.8,   // 시민 감염 기본 80%
       PLAYER_BASE_RATE: 1.0,      // 감염된 플레이어 → 시민 감염 시도 확률
       VACCINE_REDUCTION_FACTOR: 0.05, // 백신 완성 후 감염률 95% 감소
-      CHESTS_REQUIRED_FOR_VACCINE: 5, // (이제 직접 쓰진 않지만 남겨둠)
       RECOVERY_TURNS: 4,
 
       // ★ 새 설정: 연구소 개수 & 백신 개발률 변화량
@@ -415,7 +411,6 @@
 
       // ★ activeChestTiles = 연구소 위치 세트 (이름만 그대로 사용)
       activeChestTiles: new Set(),
-      chestWave: 0,            // 더는 안 씀
       openedChestCount: 0,     // ★ "열린 상자 수" 대신 "백신 개발률(0~100)"로 사용
       vaccineActive: false,    // ★ 백신 완성 여부
 
@@ -667,8 +662,7 @@
           tileIndex: randInt(NUM_TILES),
           infected: false,
           infectedTurn: null, 
-          recovered: false,
-          vaccinated: false
+          recovered: false
         });
       }
       for (let i = 0; i < NUM_PLAYERS; i++) {
@@ -677,7 +671,6 @@
           type: "player",
           tileIndex: randInt(NUM_TILES),
           infected: false,
-          vaccinated: false,
           visitedLabs: new Set()
         });
       }
@@ -910,18 +903,7 @@
 
         // 연구소 위에 이미 있으면 굳이 자동 이동 안 함
         if (state.activeChestTiles.has(cur)) continue;
-
-        if (!p.vaccinated) {
-          let best = null;
-          let bestDist = dist[cur];
-
-          for (const nb of neighbors) {
-            if (dist[nb] < bestDist) {
-              bestDist = dist[nb];
-              best = nb;
-            }
           }
-
           if (best !== null && bestDist < Infinity) {
             p.tileIndex = best;
             state.playersMovedThisTurn.add(p.id);
@@ -1035,9 +1017,8 @@
           const idx = randInt(healthy.length);
           const target = healthy[idx];
 
-          // (개별 시민 백신은 사용 안 해도 되지만, 코드 구조는 유지)
-          const susceptibility = target.vaccinated ? VACCINE_REDUCTION_FACTOR : 1;
-          const infectionProb = playerRate * susceptibility;
+          const infectionProb = playerRate;
+          const infectionProb = citizenRate;
 
           if (!target.infected && Math.random() < infectionProb) {
             target.infected = true;
@@ -1089,16 +1070,6 @@
       }
     }
 
-    // ★ 더 이상 쓰지 않는 보물상자 스폰 함수는 빈 동작으로 둠
-    function spawnChestsIfNeeded() {
-      return;
-    }
-
-    // ★ openChestsByPlayers는 applyLabEffects로 대체했으므로 사용 안 함
-    function openChestsByPlayers() {
-      return;
-    }
-
     // 교사 쪽에서 매 턴 끝나고 타일 요약 정보 만드는 함수
     function computeTileStats() {
       const { NUM_TILES } = GameConfig;
@@ -1108,7 +1079,6 @@
       const tiles = [...Array(NUM_TILES)].map(() => ({
         total: 0,
         infected: 0,
-        vaccinatedCitizens: 0,
         hasChest: false   // ★ 연구소 여부
       }));
 
@@ -1117,9 +1087,6 @@
         const t = tiles[e.tileIndex];
         t.total++;
         if (e.infected) t.infected++;
-
-        if (e.type === "citizen" && e.vaccinated) {
-          t.vaccinatedCitizens++;
         }
       }
 
@@ -1242,7 +1209,6 @@
           el.path.style.fill = "rgba(200, 220, 255, 0.9)";
         } else {
           const infratio = t.total > 0 ? t.infected / t.total : 0;
-          const vacRatio = t.total > 0 ? t.vaccinatedCitizens / t.total : 0;
         
           let baseR, baseG, baseB;
           if (infratio === 0) {
@@ -1259,12 +1225,6 @@
           const vaccineG = 220;
           const vaccineB = 0;
 
-          const alpha = vacRatio; // 0 ~ 1
-
-          const r = Math.round(baseR * (1 - alpha) + vaccineR * alpha);
-          const g = Math.round(baseG * (1 - alpha) + vaccineG * alpha);
-          const b = Math.round(baseB * (1 - alpha) + vaccineB * alpha);
-
           el.path.style.fill = `rgb(${r}, ${g}, ${b})`;
         }
 
@@ -1275,12 +1235,7 @@
         const playersHere = tileEntities[i].players;
         playersHere.forEach(p => {
           const d = document.createElement("div");
-          if (p.vaccinated) {
-            d.className = "piece vaccinated";
-          } else {
-            d.className =
-              "piece player" + (p.infected ? " infected" : "");
-          }
+          d.className = "piece player" + (p.infected ? " infected" : "");
 
           if (NetState.playerId && p.id === NetState.playerId) {
             d.classList.add("me");
@@ -1376,7 +1331,6 @@
       state.lastReproductionIndex = 0;
 
       state.activeChestTiles = new Set();
-      state.chestWave = 0;
       state.openedChestCount = 0;  // ★ 백신 개발률 0%
       state.vaccineActive = false;
       state.playersMovedThisTurn = new Set();
@@ -1459,7 +1413,6 @@
           await NetState.playersRef.child(p.id).update({
             tileIndex: p.tileIndex,
             infected: p.infected,
-            vaccinated: p.vaccinated
           });
         }
       }
@@ -1509,8 +1462,7 @@
           name: p.id,          // 일단 기본 이름. 필요하면 수정 가능
           role: "ai",          // 사람이 조종하지 않는 말
           tileIndex: p.tileIndex,
-          infected: p.infected,
-          vaccinated: p.vaccinated
+          infected: p.infected
         });
       }
 
@@ -1641,7 +1593,6 @@
           if (!NetState.isTeacher) {
             p.tileIndex  = remote.tileIndex ?? p.tileIndex;
             p.infected   = !!remote.infected;
-            p.vaccinated = !!remote.vaccinated;
           }
   
           p.isHuman = remote.role === "student" || remote.role === "teacher";
@@ -1701,6 +1652,7 @@
   </script>
 </body>
 </html>
+
 
 
 
