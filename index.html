@@ -269,6 +269,7 @@
         <span>플레이어 25명 · 시민 30만명 · 타일 169개</span>
         <button class="btn secondary" id="addDummyLogBtn">테스트 로그 추가</button>
         <button class="btn secondary" id="newGameBtn">새 게임</button>
+        <button class="btn secondary" id="switchGameModeBtn" style="display:none;">게임 모드 전환</button>
         <button class="btn" id="nextTurnBtn">다음 턴 진행</button>
       </div>
     </header>
@@ -397,12 +398,19 @@
       VACCINE_PROGRESS_LOSS: 20   
     };
 
+    const GameModes = {
+      DEVELOPMENT: "development",   // 1편: 백신 개발 게임
+      VACCINATION: "vaccination"   // 2편: 백신 접종 게임
+    };
+
     // =========================
     // 2. 상태 (State)
     // =========================
     const GameState = {
       currentTurn: 1,
       entities: [],
+
+      gameMode: GameModes.DEVELOPMENT,  // 현재 게임 모드 (기본: 1편 - 백신 개발)
 
       historyCumulativeInfected: [],
       historyNewInfected: [],
@@ -465,7 +473,8 @@
       selectedPlayerInfo: document.getElementById("selectedPlayerInfo"),
       addDummyLogBtn: document.getElementById("addDummyLogBtn"),
       nextTurnBtn: document.getElementById("nextTurnBtn"),
-      newGameBtn: document.getElementById("newGameBtn")
+      newGameBtn: document.getElementById("newGameBtn"),
+      switchGameModeBtn: document.getElementById("switchGameModeBtn")
     };
 
     UI.statTotal.textContent =
@@ -1426,6 +1435,30 @@
       updateNewInfectedHistory();
     }
 
+    function switchToVaccinationMode() {
+      const state = GameState;
+
+      // 이미 2번째 게임(백신 접종 모드)인 경우
+      if (state.gameMode === GameModes.VACCINATION) {
+        addLog("이미 두 번째 게임(백신 접종 모드)입니다.");
+        return;
+      }
+
+      // 모드 전환
+      state.gameMode = GameModes.VACCINATION;
+
+      addLog("=== 상당히 오랜 시간이 지났습니다. ===");
+      addLog("과거 수많은 사람들을 죽음으로 몰고간 그 병이 다시 나타나기 시작습니다.");
+      addLog("소문에 의하면 지난 시대의 과학자들이 백신을 만들었지만");
+      addLog("너무 늦어버린 탓에 사용도 못하고 죽음을 맞이했다네요.");
+      addLog("연구소에서 백신을 얻을 수 있을지도 모르겠어요");
+
+      // 필요하면 여기서 추가적인 초기화도 가능 (예: 나중에 접종 관련 상태값 등)
+      // ex) state.vaccinationCount = 0;
+
+      renderAll();
+    }
+
     async function nextTurn() {
       const state = GameState;
 
@@ -1708,11 +1741,20 @@
         }
       }
 
+      if (isTeacher) {
+        // 교사는 게임 모드 전환 버튼을 볼 수 있음
+        UI.switchGameModeBtn.style.display = "inline-block";
+      } else {
+        // 학생은 버튼을 숨김
+        UI.switchGameModeBtn.style.display = "none";
+      }
+
       UI.addDummyLogBtn.addEventListener("click", () =>
         addLog("테스트 로그")
       );
       UI.nextTurnBtn.addEventListener("click", nextTurn);
       UI.newGameBtn.addEventListener("click", resetGame);
+      UI.switchGameModeBtn.addEventListener("click", switchToVaccinationMode);
 
       UI.vaccineToggle.addEventListener("change", () => {
         GameState.vaccineFeatureEnabled = UI.vaccineToggle.checked;
@@ -1733,5 +1775,6 @@
   </script>
 </body>
 </html>
+
 
 
