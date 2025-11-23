@@ -979,8 +979,11 @@
       }));
 
       for (const e of state.entities) {
-        if (e.type === "citizen") tilePop[e.tileIndex].citizens.push(e);
-        else tilePop[e.tileIndex].players.push(e);
+        if (e.type === "citizen") {
+          tilePop[e.tileIndex].citizens.push(e);
+        } else if (e.type === "player") {
+          tilePop[e.tileIndex].players.push(e);
+        }
       }
 
       // ★ 백신 완성 시 전체 감염률 95% 감소
@@ -1001,14 +1004,14 @@
         const infectedPlayers = players.filter(p => p.infected);
         const startInfCitizens = citizens.filter(c => c.infected);
 
-        let 
 
         // 감염된 플레이어 → 시민 1명 감염 시도
+        let healthy = citizens.filter(c => !c.infected);
         for (const p of infectedPlayers) {
           if (healthy.length === 0) break;
+          
           const idx = randInt(healthy.length);
           const target = healthy[idx];
-
           const infectionProb = playerRate;
 
           if (!target.infected && Math.random() < infectionProb) {
@@ -1024,9 +1027,9 @@
         for (const src of startInfCitizens) {
           for (let k = 0; k < 2; k++) {
             if (healthy.length === 0) break;
+            
             const idx = randInt(healthy.length);
             const target = healthy[idx];
-
             const infectionProb = citizenRate
 
             if (!target.infected && !target.recovered && Math.random() < infectionProb) {
@@ -1038,6 +1041,7 @@
           }
         }
       }
+      
       return newInf;
     }
 
@@ -1637,6 +1641,7 @@
   </script>
 </body>
 </html>
+
 
 
 
