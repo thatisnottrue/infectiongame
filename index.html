@@ -1487,6 +1487,7 @@
       NetState.movesRef = roomRef.child("moves");
       NetState.stateRef = roomRef.child("state");
 
+
       // 맵/플레이어 상태도 바로 DB에 반영 (학생이 들어왔을 때부터 동일하게 보이도록)
       const players = GameState.entities.filter(e => e.type === "player");
       for (const p of players) {
@@ -1521,25 +1522,50 @@
       NetState.movesRef = roomRef.child("moves");
       NetState.stateRef = roomRef.child("state");
 
-      const freePlayer = GameState.entities.find(e => e.type === "player" && !e._reserved);
-      if (!freePlayer) {
+            // ★ 1단계: 서버(교사)가 올려둔 players 목록에서 'ai' 역할인 말 하나 선택
+      const playersSnap = await NetState.playersRef.get();
+      const playersObj = playersSnap.val() || {};
+
+      let chosenId = null;
+      let remotePlayerInfo = null;
+      for (const [id, info] of Object.entries(playersObj)) {
+        if (!info.role || info.role === "ai") {
+          chosenId = id;
+          remotePlayerInfo = info;
+          break;
+        }
+      }
+
+      if (!chosenId) {
         alert("더 이상 할당 가능한 플레이어 말이 없습니다. (최대 인원 초과)");
         return;
       }
-      freePlayer._reserved = true;
-      freePlayer.isHuman = true;
-      NetState.playerId = freePlayer.id;
 
-      await NetState.playersRef.child(freePlayer.id).set({
+      const localPlayer = GameState.entities.find(
+        e => e.type === "player" && e.id === chosenId
+      );
+      if (!localPlayer) {
+        alert("로컬 플레이어 데이터를 찾을 수 없습니다.");
+        return;
+      }
+
+      // ★ 3단계: 로컬 말 상태를 서버(교사)의 위치/상태에 맞게 동기화
+      localPlayer._reserved = true;
+      localPlayer.isHuman = true;
+      localPlayer.tileIndex  = remotePlayerInfo.tileIndex ?? localPlayer.tileIndex;
+      localPlayer.infected   = !!remotePlayerInfo.infected;
+      localPlayer.vaccinated = !!remotePlayerInfo.vaccinated;
+
+      NetState.playerId = chosenId;
+
+      // ★ 4단계: 서버에는 이름과 role만 업데이트 (tileIndex는 교사 기준 그대로 유지)
+      await NetState.playersRef.child(chosenId).update({
         name: nickname,
-        role: "student",
-        infected: freePlayer.infected,
-        vaccinated: freePlayer.vaccinated
+        role: "student"
       });
 
       subscribeRoomState();
       subscribePlayers();
-
       alert(`방에 입장했습니다! (ID: ${roomId})`);
     }
 
@@ -1661,5 +1687,6 @@
   </script>
 </body>
 </html>
+
 
 
