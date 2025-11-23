@@ -1048,15 +1048,14 @@
 
       if (state.openedChestCount >= 100 && !state.vaccineActive) {
         state.vaccineActive = true;
-        addLog("백신이 완성되었습니다! 이제 모든 시민의 감염률이 95% 감소합니다.");
+        addLog("백신이 완성되었습니다! 그런데.. 백신 접종은 어떻게 하죠?);
       }
     }
     function stepInfection() {
       const {
         NUM_TILES,
         BASE_INFECTION_RATE,
-        PLAYER_BASE_RATE,
-        VACCINE_REDUCTION_FACTOR
+        PLAYER_BASE_RATE
       } = GameConfig;
       const state = GameState;
 
@@ -1073,13 +1072,9 @@
         }
       }
 
-      // ★ 백신 완성 시 전체 감염률 95% 감소
+      // ★ 백신과 상관없이 항상 같은 감염률 사용
       let citizenRate = BASE_INFECTION_RATE;
       let playerRate = PLAYER_BASE_RATE;
-      if (state.vaccineActive && state.vaccineFeatureEnabled) {
-        citizenRate *= VACCINE_REDUCTION_FACTOR;
-        playerRate *= VACCINE_REDUCTION_FACTOR;
-      }
 
       let newInf = 0;
 
@@ -1738,3 +1733,4 @@
   </script>
 </body>
 </html>
+
