@@ -393,8 +393,8 @@
 
       // ★ 새 설정: 연구소 개수 & 백신 개발률 변화량
       LAB_COUNT: 5,
-      VACCINE_PROGRESS_GAIN: 5,   // 연구소에 있는 비감염 플레이어 1명당 +10%
-      VACCINE_PROGRESS_LOSS: 25    // 연구소에 있는 감염 플레이어 1명당 -15%
+      VACCINE_PROGRESS_GAIN: 5,   
+      VACCINE_PROGRESS_LOSS: 25    
     };
 
     // =========================
@@ -676,7 +676,8 @@
       }
       const randP = NUM_CITIZENS + randInt(NUM_PLAYERS);
       ents[randP].infected = true;
-
+      ents[randP].infectedTurn = 0; // 선택 사항
+      GameState.cumulativeInfectedTotal = 1; // 환자 0 반영
       GameState.entities = ents;
     }
 
@@ -1021,6 +1022,12 @@
           }
           healthy.splice(idx, 1);
         }
+
+        // 2) 감염된 시민 목록도 recovered 제외가 더 명시적
+        const startInfCitizens = citizens.filter(c => c.infected && !c.recovered);
+
+        // 3) 시민 → 시민 감염 쪽 healthy 필터도 맞춰주기
+        healthy = citizens.filter(c => !c.infected && !c.recovered);
 
         // 감염된 시민 → 최대 2명 감염 시도
         healthy = citizens.filter(c => !c.infected);
@@ -1641,6 +1648,7 @@
   </script>
 </body>
 </html>
+
 
 
 
