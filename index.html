@@ -1233,11 +1233,8 @@
 
         // SVG 타일 색칠
         if (showLab) {
-          // ★ 사용 여부에 따라 다른 색
-          if (isUsedLab) {
-            // 아직 사용 전 연구소 → 기존 파란 톤
-            el.path.style.fill = "rgba(200, 220, 255, 0.9)";
-          }
+          // ★ 연구소는 항상 같은 색 (플레이어별 1회 제한만 로직으로 관리)
+          el.path.style.fill = "rgba(200, 220, 255, 0.9)";
         } else {
           const infratio = t.total > 0 ? t.infected / t.total : 0;
 
@@ -1679,6 +1676,7 @@
   </script>
 </body>
 </html>
+
 
 
 
