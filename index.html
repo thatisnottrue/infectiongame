@@ -1533,7 +1533,6 @@
       await NetState.playersRef.child(freePlayer.id).set({
         name: nickname,
         role: "student",
-        tileIndex: freePlayer.tileIndex,
         infected: freePlayer.infected,
         vaccinated: freePlayer.vaccinated
       });
@@ -1662,4 +1661,5 @@
   </script>
 </body>
 </html>
+
 
