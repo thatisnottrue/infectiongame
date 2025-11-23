@@ -678,6 +678,7 @@
           tileIndex: randInt(NUM_TILES),
           infected: false,
           vaccinated: false
+          visitedLabs: new Set()
         });
       }
       const randP = NUM_CITIZENS + randInt(NUM_PLAYERS);
@@ -946,14 +947,27 @@
       if (!state.vaccineFeatureEnabled) return;
       if (state.vaccineActive) return; // 이미 완성된 백신
 
-      const gain = GameConfig.VACCINE_PROGRESS_GAIN || 10;
-      const loss = GameConfig.VACCINE_PROGRESS_LOSS || 15;
+      const gain = GameConfig.VACCINE_PROGRESS_GAIN || 5;
+      const loss = GameConfig.VACCINE_PROGRESS_LOSS || 25;
 
       let delta = 0;
 
       for (const e of state.entities) {
         if (e.type !== "player") continue;
         if (!state.activeChestTiles.has(e.tileIndex)) continue; // 연구소 위가 아님
+
+        // ★ 방문 기록 세트가 없으면 생성 (옛 세이브/기존 객체 대비)
+        if (!e.visitedLabs) {
+          e.visitedLabs = new Set();
+        }
+
+        // ★ 이 플레이어가 이 연구소(타일)에 이미 상호작용했다면 스킵
+        if (e.visitedLabs.has(e.tileIndex)) {
+          continue;
+        }
+
+        // ★ 처음 상호작용하는 연구소라면, 이제부터는 다시 못 쓰게 기록
+        e.visitedLabs.add(e.tileIndex);
 
         if (e.infected) delta -= loss;
         else delta += gain;
@@ -1687,6 +1701,7 @@
   </script>
 </body>
 </html>
+
 
 
 
