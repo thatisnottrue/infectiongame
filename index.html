@@ -1004,10 +1004,14 @@
 
         // 1) 이 타일에 있는 감염된 플레이어 / 감염된 시민(회복자는 제외)
         const infectedPlayers = players.filter(p => p.infected);
-        const startInfCitizens = citizens.filter(c => c.infected && !c.recovered);
+        const startInfCitizens = citizens.filter(
+          c => c.infected && !c.recovered
+        );
 
         // 2) 이 타일의 "건강한 시민" = 아직 감염 X, 회복 X
-        let healthy = citizens.filter(c => !c.infected && !c.recovered);
+        let healthy = citizens.filter(
+          c => !c.infected && !c.recovered
+        );
 
         // 감염된 플레이어 → 시민 1명 감염 시도
         for (const p of infectedPlayers) {
@@ -1016,7 +1020,7 @@
           const idx = randInt(healthy.length);
           const target = healthy[idx];
 
-          if (!target.infected && Math.random() < infectionProb) {
+          if (Math.random() < playerRate) {
             target.infected = true;
             target.infectedTurn = GameState.currentTurn;
             newInf++;
@@ -1032,7 +1036,7 @@
             const idx = randInt(healthy.length);
             const target = healthy[idx];
 
-            if (!target.infected && !target.recovered && Math.random() < infectionProb) {
+            if (Math.random() < citizenRate) {
               target.infected = true;
               target.infectedTurn = GameState.currentTurn;
               newInf++;
@@ -1641,6 +1645,7 @@
   </script>
 </body>
 </html>
+
 
 
 
