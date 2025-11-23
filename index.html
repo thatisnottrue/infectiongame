@@ -411,6 +411,7 @@
 
       // ★ activeChestTiles = 연구소 위치 세트 (이름만 그대로 사용)
       activeChestTiles: new Set(),
+      visitedLabTiles: new Set(),
       openedChestCount: 0,     // ★ "열린 상자 수" 대신 "백신 개발률(0~100)"로 사용
       vaccineActive: false,    // ★ 백신 완성 여부
 
@@ -844,16 +845,19 @@
       }
     }
 
+    // ★★★ 기존 stepPlayerAutoMovement 전체 삭제하고, 아래로 교체 ★★★
     function stepPlayerAutoMovement() {
       const state = GameState;
-      const chestTiles = Array.from(state.activeChestTiles); // 연구소 타일들
       const N = GameConfig.NUM_TILES;
 
-      // 연구소가 혹시 0개라면 → 랜덤 이동
-      if (chestTiles.length === 0) {
+      const allLabs = Array.from(state.activeChestTiles || []);
+
+      // 연구소가 하나도 없으면 → 예전처럼 랜덤 이동만
+      if (allLabs.length === 0) {
         for (const p of state.entities) {
           if (p.type !== "player") continue;
           if (p.isHuman) continue; // 사람(교사/학생)이 조종하는 말은 자동 이동 제외
+
           const neighbors = getNeighborIndices(p.tileIndex);
           if (neighbors.length === 0) continue;
 
@@ -863,39 +867,56 @@
         }
         return;
       }
-      
-      const dist = new Array(N).fill(Infinity);
-      const queue = [];
-      for (const t of chestTiles) {
-        dist[t] = 0;
-        queue.push(t);
-      }
 
-      while (queue.length > 0) {
-        const cur = queue.shift();
-        const nd = dist[cur] + 1;
-        const neighbors = getNeighborIndices(cur);
-        for (const nb of neighbors) {
-          if (nd < dist[nb]) {
-            dist[nb] = nd;
-            queue.push(nb);
-          }
-        }
-      }
-
-      // 각 플레이어 자동 이동
+      // ★ 플레이어별로 "아직 안 간 연구소"만 목표로 삼아서 BFS
       for (const p of state.entities) {
         if (p.type !== "player") continue;
         if (p.isHuman) continue; // 사람 조종 말 제외
 
-        const cur = p.tileIndex;
-        const neighbors = getNeighborIndices(cur);
+        if (!p.visitedLabs) {
+          p.visitedLabs = new Set();
+        }
+
+        // 이 플레이어가 아직 방문하지 않은 연구소 목록
+        const targetLabs = allLabs.filter(idx => !p.visitedLabs.has(idx));
+
+        const neighbors = getNeighborIndices(p.tileIndex);
         if (neighbors.length === 0) continue;
 
+        // ▶ 모든 연구소를 이미 방문했다면: 그냥 랜덤 이동 (연구소 집착 X)
+        if (targetLabs.length === 0) {
+          const r = neighbors[randInt(neighbors.length)];
+          p.tileIndex = r;
+          state.playersMovedThisTurn.add(p.id);
+          continue;
+        }
+
+        // ▶ 아직 안 간 연구소들로부터 BFS 거리 계산
+        const dist = new Array(N).fill(Infinity);
+        const queue = [];
+
+        for (const t of targetLabs) {
+          dist[t] = 0;
+          queue.push(t);
+        }
+
+        while (queue.length > 0) {
+          const cur = queue.shift();
+          const nd = dist[cur] + 1;
+          const nbs = getNeighborIndices(cur);
+          for (const nb of nbs) {
+            if (nd < dist[nb]) {
+              dist[nb] = nd;
+              queue.push(nb);
+            }
+          }
+        }
+
+        const cur = p.tileIndex;
         let best = null;
         let bestDist = dist[cur];
 
-        // 이웃 중에서 연구소에 더 가까워지는 타일 찾기
+        // 이웃 중에서 "아직 안 간 연구소"에 더 가까워지는 곳 찾기
         for (const nb of neighbors) {
           if (dist[nb] < bestDist) {
             bestDist = dist[nb];
@@ -904,10 +925,10 @@
         }
 
         if (best !== null && bestDist < Infinity) {
-          // 연구소 쪽으로 한 칸 이동
+          // 연구소(아직 안 간 곳) 쪽으로 한 칸 이동
           p.tileIndex = best;
         } else {
-          // 연구소까지 경로 없으면 랜덤 이동
+          // 경로가 애매하면 그냥 랜덤 이동
           const r = neighbors[randInt(neighbors.length)];
           p.tileIndex = r;
         }
@@ -915,8 +936,10 @@
         state.playersMovedThisTurn.add(p.id);
       }
     }
+    // ★★★ stepPlayerAutoMovement 끝 ★★★
 
     // ★ 연구소에 있는 플레이어들로부터 백신 개발률 변화
+    // ★★★ 기존 applyLabEffects 전체 삭제 후, 아래 코드로 교체 ★★★
     function applyLabEffects() {
       const state = GameState;
       if (!state.vaccineFeatureEnabled) return;
@@ -926,6 +949,9 @@
       const loss = GameConfig.VACCINE_PROGRESS_LOSS || 25;
 
       let delta = 0;
+
+      // ★ 이번 턴에 "처음 상호작용한" 연구소 타일들 모으기
+      const newlyUsedLabs = new Set();
 
       for (const e of state.entities) {
         if (e.type !== "player") continue;
@@ -944,10 +970,22 @@
         // ★ 처음 상호작용하는 연구소라면, 이제부터는 다시 못 쓰게 기록
         e.visitedLabs.add(e.tileIndex);
 
+        // ★ 전역 "사용된 연구소" 후보에 추가
+        newlyUsedLabs.add(e.tileIndex);
+
         if (e.infected) delta -= loss;
         else delta += gain;
       }
 
+      // ★ 전역 visitedLabTiles에 합치기 (delta와 관계없이 항상 처리)
+      if (!state.visitedLabTiles) {
+        state.visitedLabTiles = new Set();
+      }
+      for (const idx of newlyUsedLabs) {
+        state.visitedLabTiles.add(idx);
+      }
+
+      // 이 턴에 백신 개발률 변화가 없으면 여기서 끝
       if (delta === 0) return;
 
       state.openedChestCount = Math.max(
@@ -1078,6 +1116,7 @@
         total: 0,
         infected: 0,
         hasChest: false   // ★ 연구소 여부
+        usedLab: false
       }));
 
       // 시민/플레이어로부터 통계 쌓기
@@ -1091,6 +1130,13 @@
       state.activeChestTiles.forEach(idx => {
         if (tiles[idx]) tiles[idx].hasChest = true;
       });
+
+      // ★★★ 추가: 이미 사용된 연구소 표시
+      if (state.visitedLabTiles) {
+        state.visitedLabTiles.forEach(idx => {
+          if (tiles[idx]) tiles[idx].usedLab = true;
+        });
+      }
 
       return tiles;
     }
@@ -1130,7 +1176,8 @@
           infected: 0,
           players: 0,
           vaccinatedCitizens: 0,
-          hasChest: false
+          hasChest: false,
+          usedLab: false
         }));
         tileEntities = [...Array(NUM_TILES)].map(() => ({
           players: [],
@@ -1152,11 +1199,12 @@
             }
           }
         }
-
-        state.activeChestTiles.forEach(idx => {
-          if (tiles[idx]) tiles[idx].hasChest = true;
-        });
-      }
+        
+        if (state.visitedLabTiles) {
+          state.visitedLabTiles.forEach(idx => {
+            if (tiles[idx]) tiles[idx].usedLab = true;
+          });
+        }
 
       // ★ 학생의 "연구소 시야" 계산 (내 말 기준 2칸 이내)
       let visibleRegionForStudent = null;
@@ -1188,6 +1236,7 @@
         el.pop.textContent = t.total;
 
         const isLabTile = !!t.hasChest;
+        const isUsedLab = !!t.usedLab;
         let showLab = false;
 
         if (state.vaccineFeatureEnabled && isLabTile) {
@@ -1202,8 +1251,14 @@
 
         // SVG 타일 색칠
         if (showLab) {
-          // 연구소 타일: 약간 파란색 톤
-          el.path.style.fill = "rgba(200, 220, 255, 0.9)";
+          // ★★★ 사용 여부에 따라 다른 색
+          if (isUsedLab) {
+            // 이미 한 번 이상 효과가 발동된 연구소 → 살짝 회색/연녹색 톤
+            el.path.style.fill = "rgba(190, 210, 200, 0.9)";
+          } else {
+            // 아직 사용 전 연구소 → 기존 파란 톤
+            el.path.style.fill = "rgba(200, 220, 255, 0.9)";
+          }
         } else {
           const infratio = t.total > 0 ? t.infected / t.total : 0;
         
@@ -1324,6 +1379,7 @@
       state.lastReproductionIndex = 0;
 
       state.activeChestTiles = new Set();
+      state.visitedLabTiles = new Set(); // 사용된 연구소 초기
       state.openedChestCount = 0;  // ★ 백신 개발률 0%
       state.vaccineActive = false;
       state.playersMovedThisTurn = new Set();
@@ -1645,6 +1701,7 @@
   </script>
 </body>
 </html>
+
 
 
 
