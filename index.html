@@ -395,7 +395,11 @@
       // ★ 새 설정: 연구소 개수 & 백신 개발률 변화량
       LAB_COUNT: 5,
       VACCINE_PROGRESS_GAIN: 2,   
-      VACCINE_PROGRESS_LOSS: 20   
+      VACCINE_PROGRESS_LOSS: 20,
+
+      // ★ 2번째 게임(백신 접종 모드)용 설정
+      MAX_VACCINE_DOSES_PER_PLAYER: 5, // 한 플레이어가 들고 다닐 수 있는 백신 최대 회수
+      VACCINATIONS_PER_TURN: 2         // 한 턴에 한 플레이어가 접종할 수 있는 시민 수
     };
 
     const GameModes = {
@@ -724,33 +728,6 @@
     // 6. 엔티티 초기화
     // =========================
     function initEntities() {
-      const { NUM_CITIZENS, NUM_PLAYERS, NUM_TILES } = GameConfig;
-      const ents = [];
-      for (let i = 0; i < NUM_CITIZENS; i++) {
-        ents.push({
-          id: "C" + i,
-          type: "citizen",
-          tileIndex: randInt(NUM_TILES),
-          infected: false,
-          infectedTurn: null, 
-          recovered: false
-        });
-      }
-      for (let i = 0; i < NUM_PLAYERS; i++) {
-        ents.push({
-          id: "P" + i,
-          type: "player",
-          tileIndex: randInt(NUM_TILES),
-          infected: false,
-          visitedLabs: new Set()
-        });
-      }
-      const randP = NUM_CITIZENS + randInt(NUM_PLAYERS);
-      ents[randP].infected = true;
-      ents[randP].infectedTurn = 0; // 선택 사항
-      GameState.cumulativeInfectedTotal = 1; // 환자 0 반영
-      GameState.entities = ents;
-    }
 
     // =========================
     // 7. 플레이어 선택/이동
@@ -1008,58 +985,95 @@
     }
     // ★★★ stepPlayerAutoMovement 끝 ★★★
 
-    // ★ 연구소에 있는 플레이어들로부터 백신 개발률 변화
-    // ★★★ 기존 applyLabEffects 전체 삭제 후, 아래 코드로 교체 ★★★
+    // ★ 연구소에 있는 플레이어들로부터 효과 적용
+    //  - 1편(개발 모드): 백신 개발률 up/down
+    //  - 2편(접종 모드): 연구소에서 백신 보급
     function applyLabEffects() {
       const state = GameState;
       if (!state.vaccineFeatureEnabled) return;
-      if (state.vaccineActive) return; // 이미 완성된 백신
 
-      const gain = GameConfig.VACCINE_PROGRESS_GAIN || 5;
-      const loss = GameConfig.VACCINE_PROGRESS_LOSS || 25;
+      // ──────────────────────────────
+      // 1편: 백신 개발 모드
+      // ──────────────────────────────
+      if (state.gameMode === GameModes.DEVELOPMENT) {
+        if (state.vaccineActive) return; // 이미 완성된 백신
 
-      let delta = 0;
+        const gain = GameConfig.VACCINE_PROGRESS_GAIN || 5;
+        const loss = GameConfig.VACCINE_PROGRESS_LOSS || 25;
 
-      // ★ 이번 턴에 연구소 위에 있는 플레이어들을 확인
-      for (const e of state.entities) {
-        if (e.type !== "player") continue;
-        if (!state.activeChestTiles.has(e.tileIndex)) continue; // 연구소 위가 아님
+        let delta = 0;
 
-        // ★ 플레이어별 방문 기록 세트 (없으면 생성)
-        if (!e.visitedLabs) {
-          e.visitedLabs = new Set();
+        // ★ 이번 턴에 연구소 위에 있는 플레이어들을 확인
+        for (const e of state.entities) {
+          if (e.type !== "player") continue;
+          if (!state.activeChestTiles.has(e.tileIndex)) continue; // 연구소 위가 아님
+
+          // ★ 플레이어별 방문 기록 세트 (없으면 생성)
+          if (!e.visitedLabs) {
+            e.visitedLabs = new Set();
+          }
+
+          // ★ 이 플레이어가 이 연구소(타일)에 이미 상호작용했다면 스킵
+          if (e.visitedLabs.has(e.tileIndex)) {
+            continue;
+          }
+
+          // ★ 처음 상호작용하는 연구소이면, 이 플레이어 기준으로는 다시 못 쓰게 기록
+          e.visitedLabs.add(e.tileIndex);
+
+          // ★ 효과 적용: 감염 여부에 따라 백신 개발률 증감
+          if (e.infected) delta -= loss;
+          else delta += gain;
         }
 
-        // ★ 이 플레이어가 이 연구소(타일)에 이미 상호작용했다면 스킵
-        if (e.visitedLabs.has(e.tileIndex)) {
-          continue;
+        // 이 턴에 백신 개발률 변화가 없으면 여기서 끝
+        if (delta === 0) return;
+
+        state.openedChestCount = Math.max(
+          0,
+          Math.min(100, state.openedChestCount + delta)
+        );
+
+        addLog(
+          `연구소 방문으로 백신 개발률이 ${delta > 0 ? "+" + delta : delta}% 변화했습니다. (현재 ${state.openedChestCount}%)`
+        );
+
+        if (state.openedChestCount >= 100 && !state.vaccineActive) {
+          state.vaccineActive = true;
+          addLog("백신이 완성되었습니다! 그런데.. 백신 접종은 어떻게 하죠?");
         }
 
-        // ★ 처음 상호작용하는 연구소이면, 이 플레이어 기준으로는 다시 못 쓰게 기록
-        e.visitedLabs.add(e.tileIndex);
-
-        // ★ 효과 적용: 감염 여부에 따라 백신 개발률 증감
-        if (e.infected) delta -= loss;
-        else delta += gain;
+        return;
       }
 
-      // 이 턴에 백신 개발률 변화가 없으면 여기서 끝
-      if (delta === 0) return;
+      // ──────────────────────────────
+      // 2편: 백신 접종 모드
+      //   연구소 = 백신 보급소
+      // ──────────────────────────────
+      if (state.gameMode === GameModes.VACCINATION) {
+        const maxDoses = GameConfig.MAX_VACCINE_DOSES_PER_PLAYER || 5;
 
-      state.openedChestCount = Math.max(
-        0,
-        Math.min(100, state.openedChestCount + delta)
-      );
+        for (const e of state.entities) {
+          if (e.type !== "player") continue;
+          if (!state.activeChestTiles.has(e.tileIndex)) continue; // 연구소 위가 아님
 
-      addLog(
-        `연구소 방문으로 백신 개발률이 ${delta > 0 ? "+" + delta : delta}% 변화했습니다. (현재 ${state.openedChestCount}%)`
-      );
+          if (typeof e.vaccineDoses !== "number") {
+            e.vaccineDoses = 0;
+          }
 
-      if (state.openedChestCount >= 100 && !state.vaccineActive) {
-        state.vaccineActive = true;
-        addLog("백신이 완성되었습니다! 그런데.. 백신 접종은 어떻게 하죠?");
+          // 이미 가득 차 있으면 스킵
+          if (e.vaccineDoses >= maxDoses) continue;
+
+          const gained = maxDoses - e.vaccineDoses;
+          e.vaccineDoses = maxDoses;
+
+          addLog(`플레이어 ${e.id}가 연구소에서 백신 ${gained}회분을 보급받았습니다. (현재 ${e.vaccineDoses}회분 보유)`);
+        }
+
+        return;
       }
     }
+      
     function stepInfection() {
       const {
         NUM_TILES,
@@ -1098,9 +1112,9 @@
           c => c.infected && !c.recovered
         );
 
-        // 2) 이 타일의 "건강한 시민" = 아직 감염 X, 회복 X
+        // 2) 이 타일의 "건강한 시민" = 아직 감염 X, 회복 X, 접종 X
         let healthy = citizens.filter(
-          c => !c.infected && !c.recovered
+          c => !c.infected && !c.recovered && !c.vaccinated
         );
 
         // 감염된 플레이어 → 시민 1명 감염 시도
@@ -1137,6 +1151,53 @@
       }
       
       return newInf;
+    }
+
+    // 8-1. 백신 접종 단계 (2번째 게임 전용)
+    // =========================
+    function stepVaccination() {
+      const state = GameState;
+      const { NUM_TILES, VACCINATIONS_PER_TURN } = GameConfig;
+      const maxPerTurn = VACCINATIONS_PER_TURN || 1;
+
+      // 타일별 시민 목록 모으기
+      const tileCitizens = [...Array(NUM_TILES)].map(() => []);
+
+      for (const e of state.entities) {
+        if (e.type === "citizen") {
+          tileCitizens[e.tileIndex].push(e);
+        }
+      }
+
+      // 각 플레이어가 서 있는 타일에서 시민들에게 접종
+      for (const p of state.entities) {
+        if (p.type !== "player") continue;
+        if (!p.vaccineDoses || p.vaccineDoses <= 0) continue;
+
+        const citizensHere = tileCitizens[p.tileIndex];
+        if (!citizensHere || citizensHere.length === 0) continue;
+
+        // 아직 감염/회복되지 않았고, 접종받지 않은 시민만 대상
+        const targets = citizensHere.filter(
+          c => !c.infected && !c.recovered && !c.vaccinated
+        );
+
+        let done = 0;
+        while (done < maxPerTurn && p.vaccineDoses > 0 && targets.length > 0) {
+          const idx = randInt(targets.length);
+          const c = targets[idx];
+
+          c.vaccinated = true;
+          p.vaccineDoses--;
+          done++;
+
+          targets.splice(idx, 1);
+        }
+
+        if (done > 0) {
+          addLog(`플레이어 ${p.id}가 시민 ${done}명에게 백신을 접종했습니다. (잔여 백신: ${p.vaccineDoses}회분)`);
+        }
+      }
     }
 
     function stepRecovery() {
@@ -1500,7 +1561,13 @@
       // spawnChestsIfNeeded(); // 더 이상 사용 안 함
       stepMovement();
       stepPlayerAutoMovement(); 
-      applyLabEffects();         // ★ 연구소 효과 적용
+      applyLabEffects();         // ★ 연구소 효과 적용 (모드별로 다름)
+
+      // ★ 2번째 게임(백신 접종 모드)일 때만 접종 단계 실행
+      if (state.gameMode === GameModes.VACCINATION) {
+        stepVaccination();
+      }
+
       const newInf = stepInfection();
       state.cumulativeInfectedTotal += newInf;
       
@@ -1782,6 +1849,7 @@
   </script>
 </body>
 </html>
+
 
 
 
