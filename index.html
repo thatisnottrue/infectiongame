@@ -1435,28 +1435,35 @@
       updateNewInfectedHistory();
     }
 
-    function switchToVaccinationMode() {
+    function toggleGameMode() {
       const state = GameState;
 
-      // 이미 2번째 게임(백신 접종 모드)인 경우
-      if (state.gameMode === GameModes.VACCINATION) {
-        addLog("이미 두 번째 게임(백신 접종 모드)입니다.");
+      // 1편 → 2편 : 백신 개발 모드 → 백신 접종 모드
+      if (state.gameMode === GameModes.DEVELOPMENT) {
+        state.gameMode = GameModes.VACCINATION;
+
+        addLog("=== 상당히 오랜 시간이 지났습니다. ===");
+        addLog("과거 수많은 사람들을 죽음으로 몰고간 그 병이 다시 나타나기 시작했습니다.");
+        addLog("소문에 의하면 지난 시대의 과학자들이 백신을 만들었지만");
+        addLog("너무 늦어버린 탓에 사용도 못하고 죽음을 맞이했다네요.");
+        addLog("연구소에서 백신을 얻을 수 있을지도 모르겠어요.");
+
+        renderAll();
         return;
       }
 
-      // 모드 전환
-      state.gameMode = GameModes.VACCINATION;
+      // 2편 → 1편 : 백신 접종 모드 → 백신 개발 모드
+      if (state.gameMode === GameModes.VACCINATION) {
+        state.gameMode = GameModes.DEVELOPMENT;
 
-      addLog("=== 상당히 오랜 시간이 지났습니다. ===");
-      addLog("과거 수많은 사람들을 죽음으로 몰고간 그 병이 다시 나타나기 시작습니다.");
-      addLog("소문에 의하면 지난 시대의 과학자들이 백신을 만들었지만");
-      addLog("너무 늦어버린 탓에 사용도 못하고 죽음을 맞이했다네요.");
-      addLog("연구소에서 백신을 얻을 수 있을지도 모르겠어요");
+        addLog("=== 시간축이 거꾸로 흐르며, 다시 첫 번째 게임으로 돌아갑니다. ===");
+        addLog("도시는 아직 백신이 완성되지 않은 초기 감염 확산 단계입니다.");
+        addLog("연구소를 찾아다니며 백신 개발률을 높여야 합니다.");
+        addLog("이번에는 더 빠르게, 더 효율적으로 연구를 진행해 보세요.");
 
-      // 필요하면 여기서 추가적인 초기화도 가능 (예: 나중에 접종 관련 상태값 등)
-      // ex) state.vaccinationCount = 0;
-
-      renderAll();
+        renderAll();
+        return;
+      }
     }
 
     async function nextTurn() {
@@ -1754,7 +1761,7 @@
       );
       UI.nextTurnBtn.addEventListener("click", nextTurn);
       UI.newGameBtn.addEventListener("click", resetGame);
-      UI.switchGameModeBtn.addEventListener("click", switchToVaccinationMode);
+      UI.switchGameModeBtn.addEventListener("click", toggleGameMode);
 
       UI.vaccineToggle.addEventListener("change", () => {
         GameState.vaccineFeatureEnabled = UI.vaccineToggle.checked;
@@ -1775,6 +1782,7 @@
   </script>
 </body>
 </html>
+
 
 
 
