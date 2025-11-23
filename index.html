@@ -1002,18 +1002,19 @@
         const citizens = tile.citizens;
         const players = tile.players;
 
+        // 1) 이 타일에 있는 감염된 플레이어 / 감염된 시민(회복자는 제외)
         const infectedPlayers = players.filter(p => p.infected);
-        const startInfCitizens = citizens.filter(c => c.infected);
+        const startInfCitizens = citizens.filter(c => c.infected && !c.recovered);
 
+        // 2) 이 타일의 "건강한 시민" = 아직 감염 X, 회복 X
+        let healthy = citizens.filter(c => !c.infected && !c.recovered);
 
         // 감염된 플레이어 → 시민 1명 감염 시도
-        let healthy = citizens.filter(c => !c.infected);
         for (const p of infectedPlayers) {
           if (healthy.length === 0) break;
           
           const idx = randInt(healthy.length);
           const target = healthy[idx];
-          const infectionProb = playerRate;
 
           if (!target.infected && Math.random() < infectionProb) {
             target.infected = true;
@@ -1023,21 +1024,13 @@
           healthy.splice(idx, 1);
         }
 
-        // 2) 감염된 시민 목록도 recovered 제외가 더 명시적
-        const startInfCitizens = citizens.filter(c => c.infected && !c.recovered);
-
-        // 3) 시민 → 시민 감염 쪽 healthy 필터도 맞춰주기
-        healthy = citizens.filter(c => !c.infected && !c.recovered);
-
         // 감염된 시민 → 최대 2명 감염 시도
-        healthy = citizens.filter(c => !c.infected);
         for (const src of startInfCitizens) {
           for (let k = 0; k < 2; k++) {
             if (healthy.length === 0) break;
             
             const idx = randInt(healthy.length);
             const target = healthy[idx];
-            const infectionProb = citizenRate
 
             if (!target.infected && !target.recovered && Math.random() < infectionProb) {
               target.infected = true;
@@ -1648,6 +1641,7 @@
   </script>
 </body>
 </html>
+
 
 
 
