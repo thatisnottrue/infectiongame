@@ -931,6 +931,11 @@
           if (best !== null && bestDist < Infinity) {
             p.tileIndex = best;
             state.playersMovedThisTurn.add(p.id);
+          } else {
+            // 상자까지 경로 없으면 랜덤이동
+            const r = neighbors[randInt(neighbors.length)];
+            p.tileIndex = r;
+            state.playersMovedThisTurn.add(p.id);
           }
           continue;
         }
@@ -1694,6 +1699,7 @@
   </script>
 </body>
 </html>
+
 
 
 
