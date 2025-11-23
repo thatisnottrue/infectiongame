@@ -1000,6 +1000,7 @@
     // ★★★ stepPlayerAutoMovement 끝 ★★★
 
     // ★ 연구소에 있는 플레이어들로부터 백신 개발률 변화
+    // ★★★ 기존 applyLabEffects 전체 삭제 후, 아래 코드로 교체 ★★★
     function applyLabEffects() {
       const state = GameState;
       if (!state.vaccineFeatureEnabled) return;
@@ -1036,8 +1037,6 @@
       // 이 턴에 백신 개발률 변화가 없으면 여기서 끝
       if (delta === 0) return;
 
-      const prevPercent = state.openedChestCount;
-
       state.openedChestCount = Math.max(
         0,
         Math.min(100, state.openedChestCount + delta)
@@ -1047,17 +1046,11 @@
         `연구소 방문으로 백신 개발률이 ${delta > 0 ? "+" + delta : delta}% 변화했습니다. (현재 ${state.openedChestCount}%)`
       );
 
-      // ★ 새 효과: 75%를 처음 넘어가는 순간, 시민 감염률 70% 억제 안내
-      if (prevPercent < 75 && state.openedChestCount >= 75) {
-        addLog("백신 개발률이 75%를 돌파했습니다. 이제 시민 감염률이 70% 억제됩니다.");
-      }
-
       if (state.openedChestCount >= 100 && !state.vaccineActive) {
         state.vaccineActive = true;
         addLog("백신이 완성되었습니다! 이제 모든 시민의 감염률이 95% 감소합니다.");
       }
     }
-
     function stepInfection() {
       const {
         NUM_TILES,
@@ -1080,21 +1073,9 @@
         }
       }
 
-      // ★ 기본 감염률
+      // ★ 백신 완성 시 전체 감염률 95% 감소
       let citizenRate = BASE_INFECTION_RATE;
       let playerRate = PLAYER_BASE_RATE;
-
-      // ★ 새 효과: 백신 개발률이 75% 이상이면 시민 감염률 70% 억제 (×0.3)
-      //   - 백신이 완성되기 전까지 적용
-      if (
-        state.vaccineFeatureEnabled &&
-        !state.vaccineActive &&
-        state.openedChestCount >= 75
-      ) {
-        citizenRate *= 0.3; // 70% 억제
-      }
-
-      // ★ 백신 완성 시 전체 감염률 95% 추가 감소
       if (state.vaccineActive && state.vaccineFeatureEnabled) {
         citizenRate *= VACCINE_REDUCTION_FACTOR;
         playerRate *= VACCINE_REDUCTION_FACTOR;
@@ -1757,30 +1738,3 @@
   </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
