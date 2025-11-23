@@ -1115,8 +1115,8 @@
       const tiles = [...Array(NUM_TILES)].map(() => ({
         total: 0,
         infected: 0,
-        hasChest: false   // ★ 연구소 여부
-        usedLab: false
+        hasChest: false,   // ★ 연구소 여부
+        usedLab: false     // ★ 이미 효과가 발동된 연구소 여부
       }));
 
       // 시민/플레이어로부터 통계 쌓기
@@ -1126,12 +1126,12 @@
         if (e.infected) t.infected++;
       }
 
-      // 연구소 위치 표시 (기존 hasChest 재사용)
+      // 연구소 위치 표시 (hasChest)
       state.activeChestTiles.forEach(idx => {
         if (tiles[idx]) tiles[idx].hasChest = true;
       });
 
-      // ★★★ 추가: 이미 사용된 연구소 표시
+      // ★ 이미 사용된 연구소 표시 (usedLab)
       if (state.visitedLabTiles) {
         state.visitedLabTiles.forEach(idx => {
           if (tiles[idx]) tiles[idx].usedLab = true;
@@ -1169,7 +1169,9 @@
         }
       }
 
-      // 2) 교사/싱글 모드
+      // =========================
+      // 2) 교사/싱글 모드: 로컬 상태에서 직접 계산
+      // =========================
       else {
         tiles = [...Array(NUM_TILES)].map(() => ({
           total: 0,
@@ -1179,6 +1181,7 @@
           hasChest: false,
           usedLab: false
         }));
+
         tileEntities = [...Array(NUM_TILES)].map(() => ({
           players: [],
           citizens: []
@@ -1188,6 +1191,7 @@
           const t = tiles[e.tileIndex];
           t.total++;
           if (e.infected) t.infected++;
+
           if (e.type === "player") {
             t.players++;
             tileEntities[e.tileIndex].players.push(e);
@@ -1199,12 +1203,19 @@
             }
           }
         }
-        
+
+        // 연구소 표시
+        state.activeChestTiles.forEach(idx => {
+          if (tiles[idx]) tiles[idx].hasChest = true;
+        });
+
+        // 이미 사용된 연구소 표시
         if (state.visitedLabTiles) {
           state.visitedLabTiles.forEach(idx => {
             if (tiles[idx]) tiles[idx].usedLab = true;
           });
         }
+      }
 
       // ★ 학생의 "연구소 시야" 계산 (내 말 기준 2칸 이내)
       let visibleRegionForStudent = null;
@@ -1227,7 +1238,9 @@
         }
       }
 
+      // =========================
       // 3) 실제 렌더링
+      // =========================
       for (let i = 0; i < NUM_TILES; i++) {
         const t = tiles[i];
         const el = state.tileElements[i];
@@ -1251,7 +1264,7 @@
 
         // SVG 타일 색칠
         if (showLab) {
-          // ★★★ 사용 여부에 따라 다른 색
+          // ★ 사용 여부에 따라 다른 색
           if (isUsedLab) {
             // 이미 한 번 이상 효과가 발동된 연구소 → 살짝 회색/연녹색 톤
             el.path.style.fill = "rgba(190, 210, 200, 0.9)";
@@ -1261,7 +1274,7 @@
           }
         } else {
           const infratio = t.total > 0 ? t.infected / t.total : 0;
-        
+
           let r, g, b;
           if (infratio === 0) {
             r = 250;
@@ -1272,7 +1285,7 @@
             g = Math.round(250 * (1 - infratio));
             b = Math.round(250 * (1 - infratio));
           }
-          
+
           el.path.style.fill = `rgb(${r}, ${g}, ${b})`;
         }
 
@@ -1701,6 +1714,7 @@
   </script>
 </body>
 </html>
+
 
 
 
