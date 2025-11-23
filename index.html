@@ -630,6 +630,42 @@
       }
     }
 
+    // ★★★ 여기서부터 getTileDistance 추가 ★★★
+    // 타일 간 최소 이동 칸수(BFS 기반 거리 계산)
+    function getTileDistance(a, b, maxDepth = Infinity) {
+      if (a === b) return 0;
+
+      const visited = new Set();
+      visited.add(a);
+
+      let frontier = [a];
+      let dist = 0;
+
+      while (frontier.length > 0 && dist < maxDepth) {
+        dist++;
+        const next = [];
+
+        for (const cur of frontier) {
+          const neighbors = getNeighborIndices(cur);
+          for (const nb of neighbors) {
+            if (nb === b) {
+              return dist; // b에 도달했으므로 dist가 거리
+            }
+            if (!visited.has(nb)) {
+              visited.add(nb);
+              next.push(nb);
+            }
+          }
+        }
+
+        frontier = next;
+      }
+
+      // maxDepth 안에 찾지 못하면 매우 먼 것으로 처리
+      return Infinity;
+    }
+    // ★★★ getTileDistance 끝 ★★★
+
     function getNeighborIndices(i) {
       return GameState.neighborMap[i] || [];
     }
@@ -642,13 +678,39 @@
       state.activeChestTiles = new Set();
       const targetCount = LAB_COUNT || 5;
 
-      while (state.activeChestTiles.size < targetCount) {
-        state.activeChestTiles.add(randInt(NUM_TILES));
+      // 너무 운이 없어서 무한루프 방지
+      const maxAttempts = NUM_TILES * 20;
+      let attempts = 0;
+
+      while (state.activeChestTiles.size < targetCount && attempts < maxAttempts) {
+        attempts++;
+        const candidate = randInt(NUM_TILES);
+
+        // 기존 연구소들과 거리 검사 (최소 4칸 이상)
+        let ok = true;
+        for (const existing of state.activeChestTiles) {
+          const dist = getTileDistance(candidate, existing, 3);
+          // dist가 1/2/3이면 거리가 너무 가까움 → fail
+          if (dist <= 3) {
+            ok = false;
+            break;
+          }
+        }
+
+        if (!ok) continue;
+        state.activeChestTiles.add(candidate);
+      }
+
+      // 만약 안전 배치 실패 시 남은 수량은 아무 위치로 추가
+      if (state.activeChestTiles.size < targetCount) {
+        console.warn("서로 4칸 이상 떨어진 연구소 배치가 완전히 되지 않았습니다.");
+        while (state.activeChestTiles.size < targetCount) {
+          state.activeChestTiles.add(randInt(NUM_TILES));
+        }
       }
 
       console.log("연구소(센터) 위치:", Array.from(state.activeChestTiles));
     }
-
     // =========================
     // 6. 엔티티 초기화
     // =========================
@@ -1676,6 +1738,7 @@
   </script>
 </body>
 </html>
+
 
 
 
