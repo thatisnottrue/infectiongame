@@ -738,7 +738,7 @@
             infected: false,
             visitedLabs: new Set(),
             vaccinated: false,     // 플레이어 자신이 접종 여부 (원하면 활용)
-            vaccineDoses: 0        // 들고 있는 백신 회수
+            hasVaccine: false
           });
         }
 
@@ -1043,27 +1043,19 @@
         }
 
         // 2편: 백신 접종 모드 (연구소 = 백신 보급소)
-        if (state.gameMode === GameModes.VACCINATION) {
-          const maxDoses = GameConfig.MAX_VACCINE_DOSES_PER_PLAYER || 5;
+      if (state.gameMode === GameModes.VACCINATION) {
+        for (const e of state.entities) {
+          if (e.type !== "player") continue;
+          if (!state.activeChestTiles.has(e.tileIndex)) continue; // 연구소 위가 아님
 
-          for (const e of state.entities) {
-            if (e.type !== "player") continue;
-            if (!state.activeChestTiles.has(e.tileIndex)) continue;
-
-            if (typeof e.vaccineDoses !== "number") {
-              e.vaccineDoses = 0;
-            }
-
-            if (e.vaccineDoses >= maxDoses) continue;
-
-            const gained = maxDoses - e.vaccineDoses;
-            e.vaccineDoses = maxDoses;
-
-            addLog(`플레이어 ${e.id}가 연구소에서 백신 ${gained}회분을 보급받았습니다. (현재 ${e.vaccineDoses}회분 보유)`);
+          // ★ 아직 백신을 얻지 않은 플레이어만 처리
+          if (!e.hasVaccine) {
+            e.hasVaccine = true;
+            addLog(`플레이어 ${e.id}가 연구소에서 백신을 영구히 획득했습니다.`);
           }
-
-          return;
         }
+
+        return;
       }
         
       function stepInfection() {
@@ -1144,11 +1136,14 @@
       }
 
       // 8-1. 백신 접종 단계 (2번째 게임 전용)
+      //  - 백신을 영구 획득한 플레이어(hasVaccine=true)는
+      //    자신이 위치한 타일 + 인접 타일 중 랜덤 2칸의
+      //    모든 시민에게 접종을 시도한다.
       function stepVaccination() {
         const state = GameState;
-        const { NUM_TILES, VACCINATIONS_PER_TURN } = GameConfig;
-        const maxPerTurn = VACCINATIONS_PER_TURN || 1;
+        const { NUM_TILES } = GameConfig;
 
+        // 타일별 시민 목록 모으기
         const tileCitizens = [...Array(NUM_TILES)].map(() => []);
 
         for (const e of state.entities) {
@@ -1157,31 +1152,45 @@
           }
         }
 
+        // 각 플레이어에 대해 접종 처리
         for (const p of state.entities) {
           if (p.type !== "player") continue;
-          if (!p.vaccineDoses || p.vaccineDoses <= 0) continue;
+          if (!p.hasVaccine) continue; // ★ 연구소에서 백신을 얻지 않은 플레이어는 패스
 
-          const citizensHere = tileCitizens[p.tileIndex];
-          if (!citizensHere || citizensHere.length === 0) continue;
+          // 1) 영향을 주는 타일 집합: 본인 타일 + 인접 타일 중 랜덤 2칸
+          const affectedTiles = new Set();
+          affectedTiles.add(p.tileIndex);
 
-          const targets = citizensHere.filter(
-            c => !c.infected && !c.recovered && !c.vaccinated
-          );
-
-          let done = 0;
-          while (done < maxPerTurn && p.vaccineDoses > 0 && targets.length > 0) {
-            const idx = randInt(targets.length);
-            const c = targets[idx];
-
-            c.vaccinated = true;
-            p.vaccineDoses--;
-            done++;
-
-            targets.splice(idx, 1);
+          const neighbors = getNeighborIndices(p.tileIndex);
+          if (neighbors.length > 0) {
+            // 이웃 타일 섞어서 앞에서부터 2개 뽑기
+            const shuffled = neighbors.slice().sort(() => Math.random() - 0.5);
+            const pickCount = Math.min(2, shuffled.length);
+            for (let i = 0; i < pickCount; i++) {
+              affectedTiles.add(shuffled[i]);
+            }
           }
 
-          if (done > 0) {
-            addLog(`플레이어 ${p.id}가 시민 ${done}명에게 백신을 접종했습니다. (잔여 백신: ${p.vaccineDoses}회분)`);
+          // 2) 해당 타일들에 있는 시민 전체 접종
+          let vaccinatedCount = 0;
+
+          affectedTiles.forEach(tileIdx => {
+            const citizensHere = tileCitizens[tileIdx];
+            if (!citizensHere || citizensHere.length === 0) return;
+
+            for (const c of citizensHere) {
+              // 아직 감염되지 않았고, 회복도 아니고, 이미 접종된 적도 없는 시민만 대상
+              if (!c.infected && !c.recovered && !c.vaccinated) {
+                c.vaccinated = true;
+                vaccinatedCount++;
+              }
+            }
+          });
+
+          if (vaccinatedCount > 0) {
+            addLog(
+              `플레이어 ${p.id}가 인접 지역을 포함해 시민 ${vaccinatedCount}명에게 백신을 접종했습니다.`
+            );
           }
         }
       }
@@ -1801,3 +1810,4 @@
     </script>
   </body>
   </html>
+
