@@ -977,46 +977,48 @@
           if (neighbors.length === 0) continue;
 
           // ──────────────────────────────
-          // A. 2번째 게임 + 업그레이드 백신 보유(enhancedVaccine=true)인 경우
-          //    → "백신이 필요한 시민이 많은 방향"으로 이동
+          // A. 2번째 게임(VACCINATION 모드) 전용 로직
+          //    1) 감염된 AI 플레이어: 백신 미접종 시민이 많은 방향으로 이동
+          //    2) 비감염 + 강화 백신 보유(enhancedVaccine=true)인 경우도
+          //       같은 방식으로 "필요 시민 많은 곳"을 향해 이동
           // ──────────────────────────────
-          if (
-            state.gameMode === GameModes.VACCINATION &&
-            p.enhancedVaccine
-          ) {
-            let best = null;
-            let bestScore = -1;
+          if (state.gameMode === GameModes.VACCINATION) {
+            if (p.infected || p.enhancedVaccine) {
+              let best = null;
+              let bestScore = -1;
 
-            // 각 이웃 타일에 대해
-            for (const nb of neighbors) {
-              // 기본 점수: 그 타일에 있는 미접종 시민 수
-              let score = tileNeed[nb];
+              // 각 이웃 타일에 대해 스코어 계산
+              for (const nb of neighbors) {
+                // 기본 점수: 그 타일에 있는 미접종 시민 수
+                let score = tileNeed[nb];
 
-              // 보너스: 그 타일의 이웃 타일까지 조금 반영 (근처 밀집 지역으로 유도)
-              const nbNeighbors = getNeighborIndices(nb);
-              for (const nn of nbNeighbors) {
-                score += tileNeed[nn] * 0.5;
+                // 보너스: 그 타일의 이웃 타일까지 조금 반영 (근처 밀집 지역으로 유도)
+                const nbNeighbors = getNeighborIndices(nb);
+                for (const nn of nbNeighbors) {
+                  score += tileNeed[nn] * 0.5;
+                }
+
+                if (score > bestScore) {
+                  bestScore = score;
+                  best = nb;
+                }
               }
 
-              if (score > bestScore) {
-                bestScore = score;
-                best = nb;
+              // 모두 점수가 0이라면 아무 데나 랜덤 이동
+              if (best === null) {
+                best = neighbors[randInt(neighbors.length)];
               }
-            }
 
-            // 모두 점수가 0이라면 아무 데나 랜덤 이동
-            if (best === null) {
-              best = neighbors[randInt(neighbors.length)];
+              p.tileIndex = best;
+              state.playersMovedThisTurn.add(p.id);
+              continue; // 연구소 타깃 로직은 쓰지 않음
             }
-
-            p.tileIndex = best;
-            state.playersMovedThisTurn.add(p.id);
-            continue; // 이 플레이어는 더 이상 연구소 타깃 로직 사용 안 함
           }
 
           // ──────────────────────────────
-          // B. 나머지 플레이어(AI)는 기존처럼
+          // B. 나머지 플레이어(AI)는
           //    "아직 방문하지 않은 연구소"를 향해 자동 이동
+          //    (1편/2편 공통 기본 행동)
           // ──────────────────────────────
           const targetLabs = allLabs.filter(idx => !p.visitedLabs.has(idx));
 
@@ -2017,6 +2019,7 @@
     </script>
   </body>
   </html>
+
 
 
 
