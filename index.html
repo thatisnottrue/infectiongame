@@ -935,8 +935,21 @@
         const state = GameState;
         const N = GameConfig.NUM_TILES;
 
+        // ──────────────────────────────
+        // 0. 타일별 "백신이 아직 필요한 시민 수" 계산
+        //    (감염 X, 회복 X, 접종 X 인 시민)
+        // ──────────────────────────────
+        const tileNeed = [...Array(N)].map(() => 0);
+        for (const e of state.entities) {
+          if (e.type !== "citizen") continue;
+          if (!e.infected && !e.recovered && !e.vaccinated) {
+            tileNeed[e.tileIndex]++;
+          }
+        }
+
         const allLabs = Array.from(state.activeChestTiles || []);
 
+        // 연구소가 하나도 없으면 그냥 랜덤 워크
         if (allLabs.length === 0) {
           for (const p of state.entities) {
             if (p.type !== "player") continue;
@@ -960,18 +973,62 @@
             p.visitedLabs = new Set();
           }
 
-          const targetLabs = allLabs.filter(idx => !p.visitedLabs.has(idx));
-
           const neighbors = getNeighborIndices(p.tileIndex);
           if (neighbors.length === 0) continue;
 
+          // ──────────────────────────────
+          // A. 2번째 게임 + 업그레이드 백신 보유(enhancedVaccine=true)인 경우
+          //    → "백신이 필요한 시민이 많은 방향"으로 이동
+          // ──────────────────────────────
+          if (
+            state.gameMode === GameModes.VACCINATION &&
+            p.enhancedVaccine
+          ) {
+            let best = null;
+            let bestScore = -1;
+
+            // 각 이웃 타일에 대해
+            for (const nb of neighbors) {
+              // 기본 점수: 그 타일에 있는 미접종 시민 수
+              let score = tileNeed[nb];
+
+              // 보너스: 그 타일의 이웃 타일까지 조금 반영 (근처 밀집 지역으로 유도)
+              const nbNeighbors = getNeighborIndices(nb);
+              for (const nn of nbNeighbors) {
+                score += tileNeed[nn] * 0.5;
+              }
+
+              if (score > bestScore) {
+                bestScore = score;
+                best = nb;
+              }
+            }
+
+            // 모두 점수가 0이라면 아무 데나 랜덤 이동
+            if (best === null) {
+              best = neighbors[randInt(neighbors.length)];
+            }
+
+            p.tileIndex = best;
+            state.playersMovedThisTurn.add(p.id);
+            continue; // 이 플레이어는 더 이상 연구소 타깃 로직 사용 안 함
+          }
+
+          // ──────────────────────────────
+          // B. 나머지 플레이어(AI)는 기존처럼
+          //    "아직 방문하지 않은 연구소"를 향해 자동 이동
+          // ──────────────────────────────
+          const targetLabs = allLabs.filter(idx => !p.visitedLabs.has(idx));
+
           if (targetLabs.length === 0) {
+            // 더 이상 갈 연구소가 없으면 랜덤 워크
             const r = neighbors[randInt(neighbors.length)];
             p.tileIndex = r;
             state.playersMovedThisTurn.add(p.id);
             continue;
           }
 
+          // 연구소들로부터의 BFS 거리 필드 계산 (multi-source BFS)
           const dist = new Array(N).fill(Infinity);
           const queue = [];
 
@@ -1960,6 +2017,7 @@
     </script>
   </body>
   </html>
+
 
 
 
