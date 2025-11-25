@@ -337,6 +337,10 @@
         <div class="header-right">
           <span class="badge">GitHub + Netlify 배포</span>
           <span>플레이어 25명 · 시민 30만명 · 타일 169개</span>
+          <!-- ✅ 방 코드 표시용 배지 (기본은 숨김) -->
+          <span class="badge" id="roomCodeDisplay" style="display:none;">
+            방 코드: ----
+          </span>
           <button class="btn secondary" id="addDummyLogBtn">테스트 로그 추가</button>
           <button class="btn secondary" id="newGameBtn">새 게임</button>
           <button class="btn secondary" id="switchGameModeBtn" style="display:none;">게임 모드 전환</button>
@@ -1874,6 +1878,18 @@
         }
       }
 
+
+      function updateRoomCodeUI() {
+        if (!UI.roomCodeDisplay) return;
+        // 교사 + roomId가 있을 때만 보이게
+        if (NetState.isTeacher && NetState.roomId) {
+          UI.roomCodeDisplay.style.display = "inline-block";
+          UI.roomCodeDisplay.textContent = `방 코드: ${NetState.roomId}`;
+        } else {
+          UI.roomCodeDisplay.style.display = "none";
+        }
+      }
+
       function renderAll() {
         renderTiles();
         renderStats();
@@ -2438,7 +2454,8 @@
 
         subscribeRoomState();
         subscribePlayers();
-        subscribeScan();  // ★ 스캔 구독 시작
+        subscribeScan();  
+        updateRoomCodeUI();
 
         alert(`방이 생성되었습니다!\n방 ID: ${roomId}\n이 코드를 학생들에게 알려주세요.`);
       }
@@ -2502,7 +2519,8 @@
 
         subscribeRoomState();
         subscribePlayers();
-        subscribeScan(); // ★ 스캔 구독 시작
+        subscribeScan();
+        updateRoomCodeUI();
 
         alert(`방에 입장했습니다! (ID: ${roomId})`);
       }
@@ -2629,6 +2647,8 @@
           UI.scanBtn.style.display = "none";
         }
 
+        updateRoomCodeUI();
+
         UI.addDummyLogBtn.addEventListener("click", () =>
           addLog("테스트 로그")
         );
@@ -2658,6 +2678,7 @@
     </script>
   </body>
   </html>
+
 
 
 
