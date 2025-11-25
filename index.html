@@ -716,7 +716,7 @@
         const { NUM_CITIZENS, NUM_PLAYERS, NUM_TILES } = GameConfig;
         const ents = [];
 
-        // 시민 생성
+        // 시민 생성 (그대로)
         for (let i = 0; i < NUM_CITIZENS; i++) {
           ents.push({
             id: "C" + i,
@@ -725,27 +725,52 @@
             infected: false,
             infectedTurn: null,
             recovered: false,
-            vaccinated: false      // 2번째 게임에서 사용
+            vaccinated: false
           });
         }
 
-        // 플레이어 생성
+        // 플레이어 생성: 서로 최소 2칸 이상 떨어진 위치에 스폰
+        const chosenPlayerTiles = [];
+
         for (let i = 0; i < NUM_PLAYERS; i++) {
+          let tile = randInt(NUM_TILES);
+          let attempts = 0;
+
+          while (attempts < 500) {
+            tile = randInt(NUM_TILES);
+            let ok = true;
+
+            for (const prev of chosenPlayerTiles) {
+              const dist = getTileDistance(tile, prev, 2); 
+              if (dist < 2) {
+                ok = false;
+                break;
+              }
+            }
+
+            if (ok) break;
+            attempts++;
+          }
+
+          chosenPlayerTiles.push(tile);
+
           ents.push({
             id: "P" + i,
             type: "player",
-            tileIndex: randInt(NUM_TILES),
+            tileIndex: tile,
             infected: false,
-            visitedLabs: new Set(),    // 1편/2편 공용 연구소 방문 기록
-            vaccinated: false,         // 필요시 플레이어 본인 접종 여부
-            hasVaccine: false,         // 2편에서 실제 백신 보유 여부
-            enhancedVaccine: false     // ★ 3번째 연구소 도달 시 업그레이드 여부
+            visitedLabs: new Set(),
+            vaccinated: false,
+            hasVaccine: false,
+            enhancedVaccine: false
           });
         }
 
+        // 무작위 플레이어 1명 감염
         const randP = NUM_CITIZENS + randInt(NUM_PLAYERS);
         ents[randP].infected = true;
         ents[randP].infectedTurn = 0;
+
         GameState.cumulativeInfectedTotal = 1;
         GameState.entities = ents;
       }
@@ -1619,9 +1644,9 @@
       }
 
       // =========================
-      // 10. 새 게임 / 턴 진행
+      // 10. 새 게임 / 턴 진행 (멀티플레이 대응)
       // =========================
-      function resetGame() {
+      function resetLocalGame() {
         const state = GameState;
         state.currentTurn = 1;
         state.historyCumulativeInfected = [];
@@ -1644,6 +1669,59 @@
         renderAll();
         addInitialLog();
         updateNewInfectedHistory();
+      }
+
+      async function resetGame() {
+        // 학생은 새 게임 시작 불가
+        if (NetState.roomId && !NetState.isTeacher) {
+          alert("이 방에서는 교사만 새 게임을 시작할 수 있습니다.");
+          return;
+        }
+
+        // 1) 내 화면 먼저 리셋
+        resetLocalGame();
+
+        // 2) 멀티플레이 방이면 DB에도 초기 상태 반영하여 학생 화면 갱신
+        if (NetState.roomId && NetState.isTeacher && NetState.stateRef && NetState.playersRef) {
+          const inf = computeInfectedCount();
+          const tileStats = computeTileStats();
+
+          // state 전체 초기화
+          await NetState.stateRef.set({
+            turn: GameState.currentTurn,
+            vaccineReady: GameState.vaccineActive,
+            openedChests: GameState.openedChestCount,
+            infectedTotal: inf,
+            cumulativeHistory: GameState.historyCumulativeInfected,
+            newHistory: GameState.historyNewInfected,
+            tiles: tileStats,
+            gameMode: GameState.gameMode
+          });
+
+          // 기존 playersRef의 name/role 유지하면서 위치/상태 초기화
+          const playersSnap = await NetState.playersRef.get();
+          const remotePlayers = playersSnap.val() || {};
+          const playerEntities = GameState.entities.filter(e => e.type === "player");
+
+          for (const p of playerEntities) {
+            const baseData = remotePlayers[p.id] || {
+              name: p.id,
+              role: "ai"
+            };
+
+            await NetState.playersRef.child(p.id).set({
+              ...baseData,
+              tileIndex: p.tileIndex,
+              infected: p.infected,
+              vaccinated: p.vaccinated || false
+            });
+          }
+
+          // 학생이 이전 턴에 제출한 이동 기록 초기화
+          if (NetState.movesRef) {
+            await NetState.movesRef.set(null);
+          }
+        }
       }
 
       function toggleGameMode() {
@@ -2051,6 +2129,7 @@
     </script>
   </body>
   </html>
+
 
 
 
