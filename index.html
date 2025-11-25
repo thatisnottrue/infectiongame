@@ -481,7 +481,9 @@
 
         // 연구소 개수 & 백신 개발률 변화량
         LAB_COUNT: 5,
-        VACCINE_PROGRESS_GAIN: 2,
+        VACCINE_PROGRESS_GAIN: function() {
+          return 3 + Math.floor(Math.random() * 3);   // 3, 4, 5 중 하나
+        },
         VACCINE_PROGRESS_LOSS: 20,
 
         // 2번째 게임(백신 접종 모드)용 설정
@@ -2150,7 +2152,7 @@
 
         if (!infected) {
           // 정상(비감염) 플레이어: 개발률 ↑
-          const n = deltaBase; // 3~5
+          const n = GameConfig.VACCINE_PROGRESS_GAIN;
           state.openedChestCount = clamp(
             state.openedChestCount + n,
             0,
@@ -2159,7 +2161,7 @@
           addLog(`백신 개발률이 ${n}% 상승했습니다!`);
         } else {
           // 감염된 플레이어: 개발률 ↓
-          const x = deltaBase; // 3~5
+          const x = GameConfig.VACCINE_PROGRESS_LOSS;
           const delta = -x;
           state.openedChestCount = clamp(
             state.openedChestCount + delta,
@@ -2786,6 +2788,7 @@
     </script>
   </body>
   </html>
+
 
 
 
