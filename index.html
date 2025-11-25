@@ -1427,138 +1427,163 @@
       // 9. 렌더링
       // =========================
       function renderTiles() {
-        const { NUM_TILES } = GameConfig;
-        const state = GameState;
+      const { NUM_TILES } = GameConfig;
+      const state = GameState;
 
-        let tiles;
-        let tileEntities;
+      let tiles;
+      let tileEntities;
 
-        if (NetState.roomId && !NetState.isTeacher && state.remoteTileStats) {
-          tiles = state.remoteTileStats;
+      if (NetState.roomId && !NetState.isTeacher && state.remoteTileStats) {
+        tiles = state.remoteTileStats;
 
-          tileEntities = [...Array(NUM_TILES)].map(() => ({
-            players: [],
-            citizens: []
-          }));
+        tileEntities = [...Array(NUM_TILES)].map(() => ({
+          players: [],
+          citizens: []
+        }));
 
-          for (const e of state.entities) {
-            if (e.type === "player") {
-              tileEntities[e.tileIndex].players.push(e);
+        for (const e of state.entities) {
+          if (e.type === "player") {
+            tileEntities[e.tileIndex].players.push(e);
+          }
+        }
+      } else {
+        tiles = [...Array(NUM_TILES)].map(() => ({
+          total: 0,
+          infected: 0,
+          players: 0,
+          vaccinatedCitizens: 0,
+          hasChest: false
+        }));
+
+        tileEntities = [...Array(NUM_TILES)].map(() => ({
+          players: [],
+          citizens: []
+        }));
+
+        for (const e of state.entities) {
+          const t = tiles[e.tileIndex];
+          t.total++;
+          if (e.infected) t.infected++;
+
+          if (e.type === "player") {
+            t.players++;
+            tileEntities[e.tileIndex].players.push(e);
+          } else {
+            tileEntities[e.tileIndex].citizens.push(e);
+
+            if (e.vaccinated) {
+              t.vaccinatedCitizens++;
             }
           }
-        } else {
-          tiles = [...Array(NUM_TILES)].map(() => ({
-            total: 0,
-            infected: 0,
-            players: 0,
-            vaccinatedCitizens: 0,
-            hasChest: false
-          }));
+        }
 
-          tileEntities = [...Array(NUM_TILES)].map(() => ({
-            players: [],
-            citizens: []
-          }));
+        state.activeChestTiles.forEach(idx => {
+          if (tiles[idx]) tiles[idx].hasChest = true;
+        });
+      }
 
-          for (const e of state.entities) {
-            const t = tiles[e.tileIndex];
-            t.total++;
-            if (e.infected) t.infected++;
+      // 학생 클라이언트에서만 시야 제한 적용
+      let visibleRegionForStudent = null;
+      if (NetState.roomId && !NetState.isTeacher) {
+        const myPlayer = GameState.entities.find(
+          e => e.type === "player" && e.id === NetState.playerId
+        );
+        if (myPlayer) {
+          const origin = myPlayer.tileIndex;
 
-            if (e.type === "player") {
-              t.players++;
-              tileEntities[e.tileIndex].players.push(e);
-            } else {
-              tileEntities[e.tileIndex].citizens.push(e);
+          // ★ 시야: 내 말 기준 "최단 거리 3칸 이내" 타일까지 보이게 (BFS)
+          const maxDepth = 3;
+          const visited = new Set();
+          const s = new Set();
 
-              if (e.vaccinated) {
-                t.vaccinatedCitizens++;
+          visited.add(origin);
+          s.add(origin);
+
+          const queue = [{ idx: origin, dist: 0 }];
+
+          while (queue.length > 0) {
+            const { idx, dist } = queue.shift();
+            if (dist >= maxDepth) continue;
+
+            const neighbors = getNeighborIndices(idx);
+            for (const nb of neighbors) {
+              if (!visited.has(nb)) {
+                visited.add(nb);
+                s.add(nb);
+                queue.push({ idx: nb, dist: dist + 1 });
               }
             }
           }
 
-          state.activeChestTiles.forEach(idx => {
-            if (tiles[idx]) tiles[idx].hasChest = true;
-          });
+          visibleRegionForStudent = s;
         }
+      }
 
-        let visibleRegionForStudent = null;
-        if (NetState.roomId && !NetState.isTeacher) {
-          const myPlayer = GameState.entities.find(
-            e => e.type === "player" && e.id === NetState.playerId
-          );
-          if (myPlayer) {
-            const origin = myPlayer.tileIndex;
-            const s = new Set();
-            s.add(origin);
+      for (let i = 0; i < NUM_TILES; i++) {
+        const t = tiles[i];
+        const el = state.tileElements[i];
+        if (!el) continue;
 
-            const n1 = getNeighborIndices(origin);
-            n1.forEach(n => s.add(n));
-            n1.forEach(n => {
-              getNeighborIndices(n).forEach(nn => s.add(nn));
-            });
+        el.pop.textContent = t.total;
 
-            visibleRegionForStudent = s;
+        const isLabTile = !!t.hasChest;
+        let showLab = false;
+
+        if (state.vaccineFeatureEnabled && isLabTile) {
+          if (!NetState.roomId || NetState.isTeacher) {
+            showLab = true;
+          } else if (visibleRegionForStudent && visibleRegionForStudent.has(i)) {
+            showLab = true;
           }
         }
 
-        for (let i = 0; i < NUM_TILES; i++) {
-          const t = tiles[i];
-          const el = state.tileElements[i];
-          if (!el) continue;
+        if (showLab) {
+          // 연구소 타일은 계속 파란색 계열
+          el.path.style.fill = "rgba(200, 220, 255, 0.9)";
+        } else {
+          const totalPop = t.total || 0;
 
-          el.pop.textContent = t.total;
+          // 감염 비율, 백신 접종 비율
+          const infectedRatio =
+            totalPop > 0 ? (t.infected || 0) / totalPop : 0;
+          const vaccinatedRatio =
+            totalPop > 0 ? (t.vaccinatedCitizens || 0) / totalPop : 0;
 
-          const isLabTile = !!t.hasChest;
-          let showLab = false;
+          let r, g, b;
 
-          if (state.vaccineFeatureEnabled && isLabTile) {
-            if (!NetState.roomId || NetState.isTeacher) {
-              showLab = true;
-            } else if (visibleRegionForStudent && visibleRegionForStudent.has(i)) {
-              showLab = true;
-            }
-          }
-
-          if (showLab) {
-            // 연구소 타일은 계속 파란색 계열
-            el.path.style.fill = "rgba(200, 220, 255, 0.9)";
+          if (totalPop === 0) {
+            // 사람이 없으면 거의 흰색
+            r = g = b = 250;
           } else {
-            const totalPop = t.total || 0;
+            // 1단계: 감염 비율에 따라 빨간색 계열 (기존 로직 비슷)
+            r = 255;
+            g = Math.round(255 * (1 - infectedRatio));
+            b = Math.round(255 * (1 - infectedRatio));
 
-            // 감염 비율, 백신 접종 비율
-            const infectedRatio =
-              totalPop > 0 ? (t.infected || 0) / totalPop : 0;
-            const vaccinatedRatio =
-              totalPop > 0 ? (t.vaccinatedCitizens || 0) / totalPop : 0;
+            // 2단계: 백신 비율에 따라 초록색을 더해줌
+            //  - 백신 많을수록 R/B를 줄여서 초록색이 도드라지게
+            r -= Math.round(155 * vaccinatedRatio);
+            b -= Math.round(155 * vaccinatedRatio);
 
-            let r, g, b;
-
-            if (totalPop === 0) {
-              // 사람이 없으면 거의 흰색
-              r = g = b = 250;
-            } else {
-              // 1단계: 감염 비율에 따라 빨간색 계열 (기존 로직 비슷)
-              r = 255;
-              g = Math.round(255 * (1 - infectedRatio));
-              b = Math.round(255 * (1 - infectedRatio));
-
-              // 2단계: 백신 비율에 따라 초록색을 더해줌
-              //  - 백신 많을수록 R/B를 줄여서 초록색이 도드라지게
-              r -= Math.round(155 * vaccinatedRatio);
-              b -= Math.round(155 * vaccinatedRatio);
-
-              // 0~255 범위로 클램프
-              r = Math.max(0, Math.min(255, r));
-              g = Math.max(0, Math.min(255, g));
-              b = Math.max(0, Math.min(255, b));
-            }
-
-            el.path.style.fill = `rgb(${r}, ${g}, ${b})`;
+            // 0~255 범위로 클램프
+            r = Math.max(0, Math.min(255, r));
+            g = Math.max(0, Math.min(255, g));
+            b = Math.max(0, Math.min(255, b));
           }
-          const pieceContainer = el.pieces;
-          pieceContainer.innerHTML = "";
 
+          el.path.style.fill = `rgb(${r}, ${g}, ${b})`;
+        }
+
+        const pieceContainer = el.pieces;
+        pieceContainer.innerHTML = "";
+
+        // ★ 말(플레이어) 표시도 시야 3칸 안쪽만 보이도록 제한
+        let canSeeThisTile = true;
+        if (NetState.roomId && !NetState.isTeacher && visibleRegionForStudent) {
+          canSeeThisTile = visibleRegionForStudent.has(i);
+        }
+
+        if (canSeeThisTile) {
           const playersHere = tileEntities[i].players;
           playersHere.forEach(p => {
             const d = document.createElement("div");
@@ -1571,6 +1596,7 @@
           });
         }
       }
+    }
 
       function updateInfectedHistory() {
         const hist = GameState.historyCumulativeInfected;
@@ -2129,6 +2155,7 @@
     </script>
   </body>
   </html>
+
 
 
 
