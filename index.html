@@ -2252,11 +2252,12 @@
       // =========================
       // 11. 초기화 & 이벤트 연결
       // =========================
-
       function makeRandomRoomId() {
-        return Math.random().toString(36).substring(2, 8).toUpperCase();
+        // 1000 ~ 9999 사이의 4자리 숫자 코드
+        const n = Math.floor(Math.random() * 9000) + 1000;
+        return String(n);
       }
-
+      
       async function createRoomAsTeacher(nickname) {
         const roomId = makeRandomRoomId();
         const roomRef = rtdb.ref("rooms/" + roomId);
@@ -2519,6 +2520,7 @@
     </script>
   </body>
   </html>
+
 
 
 
