@@ -499,7 +499,7 @@
       // =========================
       // ★★★ 여기서부터 GameState 전체 교체 ★★★
       const GameState = {
-        currentTurn: 1,
+        currentTurn: 0,
         entities: [],
 
         gameMode: GameModes.DEVELOPMENT,  // 현재 게임 모드 (기본: 1편 - 백신 개발)
@@ -2164,7 +2164,7 @@
       // =========================
       function resetLocalGame() {
         const state = GameState;
-        state.currentTurn = 1;
+        state.currentTurn = 0;
         state.historyCumulativeInfected = [];
         state.historyNewInfected = [];
         state.lastRecordedTurn = 0;
@@ -2659,6 +2659,7 @@
     </script>
   </body>
   </html>
+
 
 
 
