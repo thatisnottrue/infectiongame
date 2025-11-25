@@ -567,7 +567,7 @@
         quizSolvedCorrectly: new Set(),
 
         // 수신한 스캔의 startedAt (같은 이벤트 재처리 방지)
-        lastScanStartedAt: 0
+        lastScanStartedAt: 0,
 
         // 직전 턴 기준, 연구소까지 최소 거리 (힌트 중복 방지용)
         prevNearLabDistance: Infinity
@@ -1891,7 +1891,7 @@
         renderStats();
       }
 
-            // ★★★ 여기서부터 스캔/퀴즈 시스템 추가 ★★★
+      // ★★★ 여기서부터 스캔/퀴즈 시스템 추가 ★★★
 
       // 현재 플레이어 기준 시야 3칸 이내 타일 집합 계산 (BFS)
       function getVisibleRegionFrom(originIndex, maxDepth = 3) {
@@ -1959,22 +1959,79 @@
         return { tileIndex: bestTile, distance: bestDist };
       }
 
-      // 퀴즈 오버레이 열기
+      // 문자열 정규화: 공백 제거 + 소문자 통일
+      function normalizeAnswerText(str) {
+        if (!str) return "";
+        return str
+          .toString()
+          .trim()
+          .toLowerCase()
+          .replace(/\s+/g, "");  // 모든 공백 제거
+      }
+
+      // 주관식 정답 제출 처리
+      function submitShortAnswer(quiz, userInput) {
+        if (GameState.hasAnsweredQuiz) {
+          closeQuizOverlay();
+          return;
+        }
+
+        const userNorm = normalizeAnswerText(userInput);
+        const answerNorm = normalizeAnswerText(quiz.answerText);
+
+        const isCorrect = (userNorm === answerNorm);
+        handleQuizAnswer(isCorrect);
+      }
+
+      // 퀴즈 오버레이 열기 (주관식 + 객관식 지원)
       function openQuizOverlay(quiz) {
         if (!UI.quizOverlay) return;
 
+        // 문제 텍스트 넣기
         UI.quizQuestionText.textContent = quiz.question;
         UI.quizChoices.innerHTML = "";
 
-        quiz.choices.forEach((choiceText, idx) => {
-          const btn = document.createElement("button");
-          btn.className = "quiz-choice-btn";
-          btn.textContent = choiceText;
-          btn.addEventListener("click", () => {
-            handleQuizAnswer(idx === quiz.answerIndex);
+        // ① 주관식 (type: "short")
+        if (quiz.type === "short") {
+          const input = document.createElement("input");
+          input.type = "text";
+          input.placeholder = "정답을 입력하세요";
+          input.style.width = "100%";
+          input.style.padding = "8px 10px";
+          input.style.borderRadius = "999px";
+          input.style.border = "1px solid #ccc";
+
+          const submitBtn = document.createElement("button");
+          submitBtn.className = "btn";
+          submitBtn.textContent = "정답 제출";
+          submitBtn.style.marginTop = "8px";
+
+          input.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              submitShortAnswer(quiz, input.value);
+            }
           });
-          UI.quizChoices.appendChild(btn);
-        });
+
+          submitBtn.addEventListener("click", () => {
+            submitShortAnswer(quiz, input.value);
+          });
+
+          UI.quizChoices.appendChild(input);
+          UI.quizChoices.appendChild(submitBtn);
+        }
+        // ② 객관식 (choices + answerIndex가 있는 경우)
+        else if (Array.isArray(quiz.choices) && typeof quiz.answerIndex === "number") {
+          quiz.choices.forEach((choiceText, idx) => {
+            const btn = document.createElement("button");
+            btn.className = "quiz-choice-btn";
+            btn.textContent = choiceText;
+            btn.addEventListener("click", () => {
+              handleQuizAnswer(idx === quiz.answerIndex);
+            });
+            UI.quizChoices.appendChild(btn);
+          });
+        }
 
         UI.quizOverlay.classList.add("active");
         UI.quizOverlay.style.display = "flex";
@@ -2021,7 +2078,7 @@
         }
 
         GameState.scanHighlightTileIndex = result.tileIndex;
-        GameState.scanHighlightUntil = Date.now() + 10000; // 10초간 표시 (원하면 조정 가능)
+        GameState.scanHighlightUntil = Date.now() + 10000; // 10초간 표시
 
         renderAll();
       }
@@ -2613,6 +2670,7 @@
     </script>
   </body>
   </html>
+
 
 
 
