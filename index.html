@@ -533,27 +533,27 @@
         quizBank: [
           {
             id: "q1",
+            type: "short",
             question: "우리 몸의 방어 작용에는 두 가지로 구분된다. 무엇인가?",
-            choices: ["선천 면역과 후천 면역(적응 면역)"],
-            answerIndex: 0
+            answerText: "선천 면역과 후천 면역(적응 면역)"
           },
           {
             id: "q2",
+            type: "short",
             question: "큰포식세포가 병원체를 세포로 들여와 분해하는 과정을 무엇이라고 하는가?",
-            choices: ["식세포작용"],
-            answerIndex: 0
+            answerText: "식세포작용"
           },
           {
             id: "q3",
+            type: "short",
             question: "B림프구의 일부는 항체를 생성하고 분비하는 (              )(으)로 분화한다. 괄호 안에 들어갈 말은?",
-            choices: ["형질세포"],
-            answerIndex: 0
+            answerText: "형질세포"
           },
           {
             id: "q4",
+            type: "short",
             question: "특정 항체가 특정 항원과만 결합하는 특성을 무엇이라고 하는가?",
-            choices: ["항원항체반응의 특이성"],
-            answerIndex: 0
+            answerText: "항원항체반응의 특이성"
           }
         ],
         activeQuizId: null,
@@ -566,8 +566,11 @@
         // 이 학생(클라이언트) 기준으로 "이미 정답을 맞춘 퀴즈 ID" 모음
         quizSolvedCorrectly: new Set(),
 
-        // 마지막으로 수신한 스캔의 startedAt (같은 이벤트 재처리 방지)
+        // 수신한 스캔의 startedAt (같은 이벤트 재처리 방지)
         lastScanStartedAt: 0
+
+        // 직전 턴 기준, 연구소까지 최소 거리 (힌트 중복 방지용)
+        prevNearLabDistance: Infinity
       };
       // ★★★ GameState 끝 ★★★
 
@@ -1675,6 +1678,43 @@
           }
         }
 
+        // === 연구소 근처 힌트용: 현재 포커스 플레이어 & 연구소까지 최소 거리 계산 ===
+        let focusPlayer = null;
+
+        // 1) 멀티 학생 모드: 내 플레이어 기준
+        if (NetState.roomId && NetState.playerId) {
+          focusPlayer = GameState.entities.find(
+            e => e.type === "player" && e.id === NetState.playerId
+          );
+        } else {
+          // 2) 싱글플레이나 교사 단독 플레이일 때: 첫 번째 플레이어 기준
+          focusPlayer = GameState.entities.find(e => e.type === "player");
+        }
+
+        let minDistToLabForFocus = Infinity;
+
+        if (focusPlayer && GameState.activeChestTiles && GameState.activeChestTiles.size > 0) {
+          for (const labIdx of GameState.activeChestTiles) {
+            const d = getTileDistance(focusPlayer.tileIndex, labIdx, 20);
+            if (d < minDistToLabForFocus) {
+              minDistToLabForFocus = d;
+            }
+          }
+        }
+
+        // ★ 연구소까지 최소 거리가 "2칸 이하"가 된 순간 로그 힌트 출력
+        if (
+          minDistToLabForFocus <= 2 &&
+          GameState.prevNearLabDistance > 2 &&       // 이전엔 더 멀었음
+          minDistToLabForFocus < Infinity
+        ) {
+          addLog("주변 건물 간판에 연구소 표시가 보입니다. 근처를 더 조사해보세요.");
+        }
+
+        // 직전 거리 갱신 (다음 프레임/턴에서 비교용)
+        GameState.prevNearLabDistance = minDistToLabForFocus;
+
+        
         for (let i = 0; i < NUM_TILES; i++) {
           const t = tiles[i];
           const el = state.tileElements[i];
@@ -1741,6 +1781,18 @@
             }
 
             el.path.style.fill = `rgb(${r}, ${g}, ${b})`;
+          }
+
+          // === 연구소 근처 힌트용 타일 색 변화 ===
+          // 내 플레이어가 서 있는 타일이고, 연구소까지 2칸 이내라면
+          // 타일 색을 살짝 푸르게 틴트해서 "근처 느낌"만 줌
+          if (
+            focusPlayer &&
+            focusPlayer.tileIndex === i &&
+            minDistToLabForFocus <= 2 &&
+            !isLabTile // 연구소 타일 자체는 기존 색 유지
+          ) {
+            el.path.style.fill = "rgba(220, 235, 255, 0.95)";
           }
 
           const pieceContainer = el.pieces;
@@ -2561,6 +2613,7 @@
     </script>
   </body>
   </html>
+
 
 
 
