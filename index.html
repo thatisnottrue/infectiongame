@@ -1783,18 +1783,6 @@
             el.path.style.fill = `rgb(${r}, ${g}, ${b})`;
           }
 
-          // === 연구소 근처 힌트용 타일 색 변화 ===
-          // 내 플레이어가 서 있는 타일이고, 연구소까지 2칸 이내라면
-          // 타일 색을 살짝 푸르게 틴트해서 "근처 느낌"만 줌
-          if (
-            focusPlayer &&
-            focusPlayer.tileIndex === i &&
-            minDistToLabForFocus <= 2 &&
-            !isLabTile // 연구소 타일 자체는 기존 색 유지
-          ) {
-            el.path.style.fill = "rgba(220, 235, 255, 0.95)";
-          }
-
           const pieceContainer = el.pieces;
           pieceContainer.innerHTML = "";
 
@@ -2670,6 +2658,7 @@
     </script>
   </body>
   </html>
+
 
 
 
