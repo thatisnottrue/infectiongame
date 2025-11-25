@@ -2154,7 +2154,7 @@
 
         if (!infected) {
           // 정상(비감염) 플레이어: 개발률 ↑
-          const n = GameConfig.VACCINE_PROGRESS_GAIN;
+          const n = GameConfig.VACCINE_PROGRESS_GAIN();
           state.openedChestCount = clamp(
             state.openedChestCount + n,
             0,
@@ -2793,6 +2793,7 @@
     </script>
   </body>
   </html>
+
 
 
 
