@@ -1652,19 +1652,23 @@
         if (state.gameMode === GameModes.DEVELOPMENT) {
           state.gameMode = GameModes.VACCINATION;
 
-          // 2번째 게임 시작: 연구소 방문 정보/백신 보유/업그레이드 상태 초기화
           for (const e of state.entities) {
             if (e.type !== "player") continue;
             e.visitedLabs = new Set();
             e.hasVaccine = false;
             e.enhancedVaccine = false;
           }
-          
+
           addLog("=== 상당히 오랜 시간이 지났습니다. ===");
           addLog("과거 수많은 사람들을 죽음으로 몰고간 그 병이 다시 나타나기 시작했습니다.");
           addLog("소문에 의하면 지난 시대의 과학자들이 백신을 만들었지만");
           addLog("너무 늦어버린 탓에 사용도 못하고 죽음을 맞이했다네요.");
           addLog("연구소에서 백신을 얻을 수 있을지도 모르겠어요.");
+
+          // ★ 교사라면 DB에도 gameMode 갱신
+          if (NetState.roomId && NetState.isTeacher && NetState.stateRef) {
+            NetState.stateRef.update({ gameMode: state.gameMode });
+          }
 
           renderAll();
           return;
@@ -1678,11 +1682,14 @@
           addLog("연구소를 찾아다니며 백신 개발률을 높여야 합니다.");
           addLog("이번에는 더 빠르게, 더 효율적으로 연구를 진행해 보세요.");
 
+          // ★ 교사라면 DB에도 gameMode 갱신
+          if (NetState.roomId && NetState.isTeacher && NetState.stateRef) {
+            NetState.stateRef.update({ gameMode: state.gameMode });
+          }
+
           renderAll();
           return;
         }
-      }
-
       async function nextTurn() {
         const state = GameState;
 
@@ -1770,7 +1777,8 @@
             infectedTotal: inf,
             cumulativeHistory: state.historyCumulativeInfected,
             newHistory: state.historyNewInfected,
-            tiles: tileStats
+            tiles: tileStats,
+            gameMode: state.gameMode   // ★ 추가됨
           });
 
           const players = state.entities.filter(e => e.type === "player");
@@ -1807,7 +1815,8 @@
             infectedTotal: inf,
             cumulativeHistory: GameState.historyCumulativeInfected,
             newHistory: GameState.historyNewInfected,
-            tiles: tileStats
+            tiles: tileStats,
+            gameMode: GameState.gameMode   // ★ 추가됨
           }
         });
 
@@ -1904,6 +1913,8 @@
 
           if (NetState.isTeacher) return;
 
+          const prevMode = GameState.gameMode;
+
           GameState.currentTurn      = s.turn ?? GameState.currentTurn;
           GameState.openedChestCount = s.openedChests ?? GameState.openedChestCount;
           GameState.vaccineActive    = !!s.vaccineReady;
@@ -1927,8 +1938,27 @@
             GameState.activeChestTiles = chestSet;
           }
 
+          if (typeof s.gameMode === "string") {
+            GameState.gameMode = s.gameMode;
+          }
+
           updateInfectedHistory();
           updateNewInfectedHistory();
+
+          if (prevMode !== GameState.gameMode) {
+            if (prevMode === GameModes.DEVELOPMENT && GameState.gameMode === GameModes.VACCINATION) {
+              addLog("=== 상당히 오랜 시간이 지났습니다. ===");
+              addLog("과거 수많은 사람들을 죽음으로 몰고간 그 병이 다시 나타나기 시작했습니다.");
+              addLog("소문에 의하면 지난 시대의 과학자들이 백신을 만들었지만");
+              addLog("너무 늦어버린 탓에 사용도 못하고 죽음을 맞이했다네요.");
+              addLog("연구소에서 백신을 얻을 수 있을지도 모르겠어요.");
+            } else if (prevMode === GameModes.VACCINATION && GameState.gameMode === GameModes.DEVELOPMENT) {
+              addLog("=== 시간축이 거꾸로 흐르며, 다시 첫 번째 게임으로 돌아갑니다. ===");
+              addLog("도시는 아직 백신이 완성되지 않은 초기 감염 확산 단계입니다.");
+              addLog("연구소를 찾아다니며 백신 개발률을 높여야 합니다.");
+              addLog("이번에는 더 빠르게, 더 효율적으로 연구를 진행해 보세요.");
+            }
+          }
 
           renderAll();
           updateSelectedPlayerInfo();
@@ -2019,6 +2049,7 @@
     </script>
   </body>
   </html>
+
 
 
 
