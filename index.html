@@ -609,6 +609,8 @@
         ],
         activeQuizId: null,
         hasAnsweredQuiz: false,
+        // 퀴즈의 용도/대상 정보를 담는 컨텍스트 (scan / lab 구분)
+        quizContext: null,
 
         // 시야 밖 연구소 하이라이트 정보
         scanHighlightTileIndex: null,
@@ -684,6 +686,10 @@
       // 4. 유틸 함수
       // =========================
       const randInt = max => Math.floor(Math.random() * max);
+
+      function clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+      }
 
       function addLog(msg) {
         const li = document.createElement("li");
@@ -1302,6 +1308,9 @@
       //  - 2편(접종 모드): 연구소 방문 횟수에 따라 영구 백신 획득 + 업그레이드
       //      · 2번째 연구소: 50% 확률로 획득 시도
       //      · 3번째 연구소: 100% 확률로 획득, 또는 이미 있으면 업그레이드
+      // 연구소에 있는 플레이어들로부터 효과 적용
+      //  - 1편(개발 모드): 연구소 도달 → 퀴즈 → 정답 시 백신 개발률 ±(3~5)% 변경
+      //  - 2편(접종 모드): 기존 백신 획득/업그레이드 로직 그대로 유지
       function applyLabEffects() {
         const state = GameState;
         if (!state.vaccineFeatureEnabled) return;
@@ -1312,62 +1321,16 @@
         if (state.gameMode === GameModes.DEVELOPMENT) {
           if (state.vaccineActive) return; // 이미 완성된 백신
 
-          const gain = GameConfig.VACCINE_PROGRESS_GAIN || 5;
-          const loss = GameConfig.VACCINE_PROGRESS_LOSS || 25;
-
-          let delta = 0;
-
-          for (const e of state.entities) {
-            if (e.type !== "player") continue;
-            if (!state.activeChestTiles.has(e.tileIndex)) continue;
-
-            // 플레이어별 연구소 방문 기록 세트 (없으면 생성)
-            if (!e.visitedLabs) {
-              e.visitedLabs = new Set();
-            }
-
-            // 이미 이 연구소(타일)를 방문한 적이 있으면 스킵
-            if (e.visitedLabs.has(e.tileIndex)) {
-              continue;
-            }
-
-            // 처음 상호작용하는 연구소로 기록
-            e.visitedLabs.add(e.tileIndex);
-
-            // 감염 여부에 따라 백신 개발률 증감
-            if (e.infected) delta -= loss;
-            else delta += gain;
+          // 이미 연구소 퀴즈가 떠 있는 상태면, 새로운 퀴즈는 이 턴엔 만들지 않음
+          if (state.quizContext && state.quizContext.mode === "lab") {
+            return;
           }
 
-          if (delta === 0) return;
+          const bank = state.quizBank || [];
+          // 퀴즈가 없으면 기존 로직으로 그냥 진행하거나, 아무 것도 안 해도 됨
+          if (!bank.length) return;
 
-          state.openedChestCount = Math.max(
-            0,
-            Math.min(100, state.openedChestCount + delta)
-          );
-
-          addLog(
-            `연구소 방문으로 백신 개발률이 ${delta > 0 ? "+" + delta : delta}% 변화했습니다. (현재 ${state.openedChestCount}%)`
-          );
-
-          if (state.openedChestCount >= 100 && !state.vaccineActive) {
-            state.vaccineActive = true;
-            addLog("백신이 완성되었습니다! 그런데.. 백신 접종은 어떻게 하죠?");
-          }
-
-          return;
-        }
-
-        // ──────────────────────────────
-        // 2편: 백신 접종 모드
-        //  - 서로 다른 연구소 방문 횟수에 따라 백신 획득
-        //    · 1번째 연구소: 설명만 (연구 진행 느낌)
-        //    · 2번째 연구소: 50% 확률로 백신 영구 획득 시도
-        //    · 3번째 연구소:
-        //        - 아직 백신이 없다면 100%로 획득 + 업그레이드
-        //        - 이미 백신이 있다면 업그레이드만 부여
-        // ──────────────────────────────
-        if (state.gameMode === GameModes.VACCINATION) {
+          // 연구소 위에 올라와 있고, 아직 그 연구소를 "성공적으로" 처리하지 않은 플레이어 찾기
           for (const e of state.entities) {
             if (e.type !== "player") continue;
             if (!state.activeChestTiles.has(e.tileIndex)) continue;
@@ -1377,23 +1340,67 @@
               e.visitedLabs = new Set();
             }
 
-            // 이미 이 연구소는 사용한 적이 있으면 효과 없음
+            // 이미 이 연구소를 성공적으로 처리한 적이 있다면(=정답을 맞춰 개발률을 바꾼 적이 있다면) 스킵
             if (e.visitedLabs.has(e.tileIndex)) {
               continue;
             }
 
-            // 이번에 처음 방문한 연구소로 기록
+            // 여기까지 왔으면: 이 플레이어는 이 연구소에서 퀴즈를 풀 자격이 있음
+            const quiz = bank[Math.floor(Math.random() * bank.length)];
+
+            // 3~5% 랜덤 (정답 시 변화량)
+            const randDelta = 3 + randInt(3); // 3,4,5 중 하나
+
+            state.activeQuizId = quiz.id;
+            state.hasAnsweredQuiz = false;
+            state.quizContext = {
+              mode: "lab",
+              playerId: e.id,
+              tileIndex: e.tileIndex,
+              infectedAtQuiz: !!e.infected,
+              deltaValue: randDelta
+            };
+
+            // 퀴즈 오버레이 표시
+            openQuizOverlay(quiz);
+
+            // 한 턴에 하나의 연구소 퀴즈만 처리
+            return;
+          }
+
+          // 이 턴에 새로 퀴즈를 줄 플레이어가 없으면 아무 일도 하지 않음
+          return;
+        }
+
+        // ──────────────────────────────
+        // 2편: 백신 접종 모드 (기존 로직 유지)
+        //  - 서로 다른 연구소 방문 횟수에 따라 백신 획득
+        //    · 1번째 연구소: 스토리 메시지
+        //    · 2번째 연구소: 50% 확률로 백신 획득
+        //    · 3번째 연구소: 백신 확정 + 업그레이드 또는 업그레이드만
+        // ──────────────────────────────
+        if (state.gameMode === GameModes.VACCINATION) {
+          for (const e of state.entities) {
+            if (e.type !== "player") continue;
+            if (!state.activeChestTiles.has(e.tileIndex)) continue;
+
+            if (!e.visitedLabs) {
+              e.visitedLabs = new Set();
+            }
+
+            if (e.visitedLabs.has(e.tileIndex)) {
+              continue;
+            }
+
             e.visitedLabs.add(e.tileIndex);
             const visitedCount = e.visitedLabs.size;
 
-            // 1번째 연구소: 스토리용 안내
             if (visitedCount === 1) {
               addLog(
                 `플레이어 ${e.id}가 첫 번째 연구소에 도착했습니다. 오래된 기록 속에서 백신의 단서를 찾고 있습니다.`
               );
             }
 
-            // 2번째 연구소: 50% 확률로 백신 획득 시도
             if (visitedCount === 2 && !e.hasVaccine) {
               if (Math.random() < 0.5) {
                 e.hasVaccine = true;
@@ -1408,9 +1415,6 @@
               }
             }
 
-            // 3번째 연구소:
-            //  - 아직 백신이 없다면 100%로 획득 + 업그레이드
-            //  - 이미 백신이 있다면 범위/이동력 업그레이드만 부여
             if (visitedCount === 3) {
               if (!e.hasVaccine) {
                 e.hasVaccine = true;
@@ -2083,7 +2087,7 @@
         UI.quizOverlay.style.display = "none";
       }
 
-      // 퀴즈 정답 처리
+      // 퀴즈 정답 처리 (scan / lab 공용)
       function handleQuizAnswer(isCorrect) {
         if (GameState.hasAnsweredQuiz) {
           closeQuizOverlay();
@@ -2092,22 +2096,90 @@
         GameState.hasAnsweredQuiz = true;
 
         const quizId = GameState.activeQuizId;
+        const ctx = GameState.quizContext;
 
+        if (isCorrect && quizId) {
+          // 이 퀴즈는 이 학생이 한 번 맞춘 적 있음 (scan용 중복 방지 등에 사용)
+          GameState.quizSolvedCorrectly.add(quizId);
+        }
+
+        if (ctx && ctx.mode === "lab") {
+          // 연구소 도달 퀴즈 결과 처리
+          handleLabQuizResult(isCorrect, ctx);
+        } else {
+          // 기본(기존) 스캔 레이더 퀴즈 결과 처리
+          handleScanQuizResult(isCorrect);
+        }
+
+        GameState.quizContext = null;
+        closeQuizOverlay();
+      }
+      // 스캔(레이더) 퀴즈 결과 처리 (기존 동작 그대로 분리)
+      function handleScanQuizResult(isCorrect) {
         if (isCorrect) {
-          // 이 학생은 이 퀴즈를 "정답 맞춘 상태"로 기록
-          if (quizId) {
-            GameState.quizSolvedCorrectly.add(quizId);
-          }
-
           addLog("정답입니다! 시야 밖에 있는 연구소 하나가 잠시 표시됩니다.");
           applyScanHighlightForCurrentPlayer();
         } else {
           addLog("아쉽습니다. 이번에는 레이더가 작동하지 않습니다.");
         }
-
-        closeQuizOverlay();
       }
 
+      // 연구소 도달 퀴즈 결과 처리
+      function handleLabQuizResult(isCorrect, ctx) {
+        const state = GameState;
+
+        const player = state.entities.find(e => e.id === ctx.playerId);
+        const tileIndex = ctx.tileIndex;
+        const deltaBase = ctx.deltaValue; // 3~5
+        const infected = !!ctx.infectedAtQuiz;
+
+        if (!isCorrect) {
+          // 오답일 때: 개발률 변화 없음, 방문 성공 처리도 안 함
+          addLog("다음 턴에 다시 도전해보세요!");
+          renderStats();
+          return;
+        }
+
+        // 정답일 때만 연구소 방문 성공 처리
+        if (player) {
+          if (!player.visitedLabs) {
+            player.visitedLabs = new Set();
+          }
+          player.visitedLabs.add(tileIndex);
+        }
+
+        if (!infected) {
+          // 정상(비감염) 플레이어: 개발률 ↑
+          const n = deltaBase; // 3~5
+          state.openedChestCount = clamp(
+            state.openedChestCount + n,
+            0,
+            100
+          );
+          addLog(`백신 개발률이 ${n}% 상승했습니다!`);
+        } else {
+          // 감염된 플레이어: 개발률 ↓
+          const x = deltaBase; // 3~5
+          const delta = -x;
+          state.openedChestCount = clamp(
+            state.openedChestCount + delta,
+            0,
+            100
+          );
+          addLog(`성공적으로 연구를 방해했습니다. 백신 개발률이 ${x}% 감소합니다.`);
+        }
+
+        // 백신 완성 체크
+        if (state.openedChestCount >= 100 && !state.vaccineActive) {
+          state.vaccineActive = true;
+          addLog("백신이 완성되었습니다! 그런데.. 백신 접종은 어떻게 하죠?");
+        }
+
+        renderStats();
+      }
+
+      
+      
       // 정답을 맞춘 학생에게만 "시야 밖 연구소" 하이라이트 적용
       function applyScanHighlightForCurrentPlayer() {
         const result = findClosestHiddenLabForCurrentPlayer();
@@ -2138,7 +2210,8 @@
         const quiz = bank[Math.floor(Math.random() * bank.length)];
         GameState.activeQuizId = quiz.id;
         GameState.hasAnsweredQuiz = false;
-
+        GameState.quizContext = { mode: "scan" };
+        
         // 1) 싱글플레이 또는 방이 없는 경우: 내 화면에만 퀴즈 표시
         if (!NetState.roomId || !NetState.scanRef) {
           openQuizOverlay(quiz);
@@ -2193,6 +2266,7 @@
 
           GameState.activeQuizId = quiz.id;
           GameState.hasAnsweredQuiz = false;
+          GameState.quizContext = { mode: "scan" };
 
           openQuizOverlay(quiz);
         });
@@ -2712,6 +2786,7 @@
     </script>
   </body>
   </html>
+
 
 
 
