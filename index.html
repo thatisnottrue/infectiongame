@@ -532,10 +532,28 @@
         // 추후 실제 문제/정답은 여기 배열만 교체하면 됨
         quizBank: [
           {
-            id: "sample-1",
-            question: "샘플 문제입니다. 추후 실제 수업 문제로 교체하세요.",
-            choices: ["선택지 A", "선택지 B", "선택지 C"],
-            answerIndex: 1
+            id: "q1",
+            question: "우리 몸의 방어 작용에는 두 가지로 구분된다. 무엇인가?",
+            choices: ["선천 면역과 후천 면역(적응 면역)"],
+            answerIndex: 0
+          },
+          {
+            id: "q2",
+            question: "큰포식세포가 병원체를 세포로 들여와 분해하는 과정을 무엇이라고 하는가?",
+            choices: ["식세포작용"],
+            answerIndex: 0
+          },
+          {
+            id: "q3",
+            question: "B림프구의 일부는 항체를 생성하고 분비하는 (              )(으)로 분화한다. 괄호 안에 들어갈 말은?",
+            choices: ["형질세포"],
+            answerIndex: 0
+          },
+          {
+            id: "q4",
+            question: "특정 항체가 특정 항원과만 결합하는 특성을 무엇이라고 하는가?",
+            choices: ["항원항체반응의 특이성"],
+            answerIndex: 0
           }
         ],
         activeQuizId: null,
@@ -543,7 +561,13 @@
 
         // 시야 밖 연구소 하이라이트 정보
         scanHighlightTileIndex: null,
-        scanHighlightUntil: 0   // Date.now() 기준 ms, 이 시각 이후 자동 해제
+        scanHighlightUntil: 0,   // Date.now() 기준 ms, 이 시각 이후 자동 해제
+
+        // 이 학생(클라이언트) 기준으로 "이미 정답을 맞춘 퀴즈 ID" 모음
+        quizSolvedCorrectly: new Set(),
+
+        // 마지막으로 수신한 스캔의 startedAt (같은 이벤트 재처리 방지)
+        lastScanStartedAt: 0
       };
       // ★★★ GameState 끝 ★★★
 
@@ -1919,7 +1943,14 @@
         }
         GameState.hasAnsweredQuiz = true;
 
+        const quizId = GameState.activeQuizId;
+
         if (isCorrect) {
+          // 이 학생은 이 퀴즈를 "정답 맞춘 상태"로 기록
+          if (quizId) {
+            GameState.quizSolvedCorrectly.add(quizId);
+          }
+
           addLog("정답입니다! 시야 밖에 있는 연구소 하나가 잠시 표시됩니다.");
           applyScanHighlightForCurrentPlayer();
         } else {
@@ -1988,10 +2019,20 @@
           if (NetState.isTeacher) return;
 
           const quizId = data.quizId;
+          const startedAt = data.startedAt || 0;
           if (!quizId) return;
 
-          // 같은 퀴즈를 중복으로 다시 열지 않도록 체크
-          if (GameState.activeQuizId === quizId && GameState.hasAnsweredQuiz) {
+          // 이미 처리한(또는 그 이전) 스캔 이벤트면 무시
+          if (startedAt <= GameState.lastScanStartedAt) {
+            return;
+          }
+
+          // 이 시점부터는 "새로운 스캔 이벤트"로 인정
+          GameState.lastScanStartedAt = startedAt;
+
+          // 이 학생이 이미 정답을 맞춘 퀴즈라면, 더 이상 출제하지 않음
+          if (GameState.quizSolvedCorrectly.has(quizId)) {
+            addLog("이미 정답을 맞춘 스캔 문제는 이 학생에게 다시 출제되지 않습니다.");
             return;
           }
 
@@ -2520,6 +2561,7 @@
     </script>
   </body>
   </html>
+
 
 
 
