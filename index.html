@@ -257,6 +257,76 @@
         gap: 4px;
         font-size: 0.78rem;
       }
+      /* ===== 퀴즈/스캔(레이더) 오버레이 ===== */
+      .quiz-overlay {
+        position: fixed;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 2000;
+      }
+      .quiz-overlay.active {
+        display: flex;
+      }
+      .quiz-backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.4);
+      }
+      .quiz-box {
+        position: relative;
+        max-width: 520px;
+        width: 90%;
+        z-index: 2001;
+      }
+      .quiz-inner {
+        background: var(--panel-bg);
+        border-radius: 20px;
+        padding: 20px 20px 16px;
+        box-shadow: var(--shadow-soft);
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .quiz-title {
+        font-size: 0.95rem;
+        font-weight: 700;
+        margin-bottom: 4px;
+      }
+      .quiz-question {
+        font-size: 0.9rem;
+        line-height: 1.5;
+      }
+      .quiz-choices {
+        margin-top: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .quiz-choice-btn {
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 8px 12px;
+        background: #f5f5fb;
+        font-size: 0.85rem;
+        cursor: pointer;
+        text-align: left;
+      }
+      .quiz-choice-btn:hover {
+        background: #e4e6ff;
+      }
+      .quiz-footer {
+        margin-top: 8px;
+        display: flex;
+        justify-content: flex-end;
+      }
+
+      /* 스캔 하이라이트용 연구소 타일 강조 */
+      .scan-highlight {
+        stroke: #ffd600;
+        stroke-width: 4;
+      }
     </style>
   </head>
 
@@ -270,6 +340,7 @@
           <button class="btn secondary" id="addDummyLogBtn">테스트 로그 추가</button>
           <button class="btn secondary" id="newGameBtn">새 게임</button>
           <button class="btn secondary" id="switchGameModeBtn" style="display:none;">게임 모드 전환</button>
+          <button class="btn secondary" id="scanBtn" style="display:none;">스캔(레이더)</button>
           <button class="btn" id="nextTurnBtn">다음 턴 진행</button>
         </div>
       </header>
@@ -349,6 +420,25 @@
         </section>
       </main>
 
+      <!-- 퀴즈/스캔(레이더) 오버레이 -->
+      <div id="quizOverlay" class="quiz-overlay" style="display:none;">
+        <div class="quiz-backdrop"></div>
+        <div class="quiz-box">
+          <div class="quiz-inner">
+            <div class="quiz-title">스캔 문제</div>
+            <div class="quiz-question" id="quizQuestionText">
+              여기 문제 텍스트가 들어갑니다.
+            </div>
+            <div class="quiz-choices" id="quizChoices">
+              <!-- JS에서 선택지 버튼 생성 -->
+            </div>
+            <div class="quiz-footer">
+              <button class="btn secondary" id="quizCloseBtn">닫기</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <footer>
         ※ 이 버전은 SVG 맵(169타일) 위에서 플레이어/시민을 시각화하고, 감염 확산 패턴과 연구소·백신 개발을 관찰하기 위한 프로토타입입니다.
       </footer>
@@ -407,6 +497,7 @@
       // =========================
       // 2. 상태 (State)
       // =========================
+      // ★★★ 여기서부터 GameState 전체 교체 ★★★
       const GameState = {
         currentTurn: 1,
         entities: [],
@@ -435,12 +526,31 @@
 
         // 서버(교사)에서 받은 요약값 저장용
         remoteInfectedTotal: null,
-        remoteTileStats: null
+        remoteTileStats: null,
+
+        // ===== 퀴즈/스캔(레이더) 시스템 =====
+        // 추후 실제 문제/정답은 여기 배열만 교체하면 됨
+        quizBank: [
+          {
+            id: "sample-1",
+            question: "샘플 문제입니다. 추후 실제 수업 문제로 교체하세요.",
+            choices: ["선택지 A", "선택지 B", "선택지 C"],
+            answerIndex: 1
+          }
+        ],
+        activeQuizId: null,
+        hasAnsweredQuiz: false,
+
+        // 시야 밖 연구소 하이라이트 정보
+        scanHighlightTileIndex: null,
+        scanHighlightUntil: 0   // Date.now() 기준 ms, 이 시각 이후 자동 해제
       };
+      // ★★★ GameState 끝 ★★★
 
       // =========================
       // 네트워크/멀티플레이 상태
       // =========================
+      // ★★★ 여기서부터 NetState 전체 교체 ★★★
       const NetState = {
         roomId: null,
         isTeacher: false,      // 교사(방장)인지
@@ -450,12 +560,15 @@
         roomRef: null,
         playersRef: null,
         movesRef: null,
-        stateRef: null
+        stateRef: null,
+        scanRef: null          // 스캔(레이더)용 퀴즈 상태 경로
       };
-
+      // ★★★ NetState 끝 ★★★
+      
       // =========================
       // 3. UI 요소 참조 (DOM)
       // =========================
+      // ★★★ 여기서부터 UI 객체 전체 교체 ★★★
       const UI = {
         svgMapContainer: document.getElementById("svgMapContainer"),
         overlayLayer: document.getElementById("overlayLayer"),
@@ -475,8 +588,16 @@
         addDummyLogBtn: document.getElementById("addDummyLogBtn"),
         nextTurnBtn: document.getElementById("nextTurnBtn"),
         newGameBtn: document.getElementById("newGameBtn"),
-        switchGameModeBtn: document.getElementById("switchGameModeBtn")
+        switchGameModeBtn: document.getElementById("switchGameModeBtn"),
+
+        // 스캔(레이더) 버튼 & 퀴즈 오버레이
+        scanBtn: document.getElementById("scanBtn"),
+        quizOverlay: document.getElementById("quizOverlay"),
+        quizQuestionText: document.getElementById("quizQuestionText"),
+        quizChoices: document.getElementById("quizChoices"),
+        quizCloseBtn: document.getElementById("quizCloseBtn")
       };
+      // ★★★ UI 객체 끝 ★★★
 
       UI.statTotal.textContent =
         GameConfig.NUM_CITIZENS + GameConfig.NUM_PLAYERS;
@@ -1426,177 +1547,202 @@
       // =========================
       // 9. 렌더링
       // =========================
+      // ★★★ 여기서부터 renderTiles 전체 교체 ★★★
       function renderTiles() {
-      const { NUM_TILES } = GameConfig;
-      const state = GameState;
+        const { NUM_TILES } = GameConfig;
+        const state = GameState;
 
-      let tiles;
-      let tileEntities;
-
-      if (NetState.roomId && !NetState.isTeacher && state.remoteTileStats) {
-        tiles = state.remoteTileStats;
-
-        tileEntities = [...Array(NUM_TILES)].map(() => ({
-          players: [],
-          citizens: []
-        }));
-
-        for (const e of state.entities) {
-          if (e.type === "player") {
-            tileEntities[e.tileIndex].players.push(e);
-          }
+        // 스캔 하이라이트 시간 만료 체크
+        if (
+          state.scanHighlightTileIndex !== null &&
+          state.scanHighlightUntil > 0 &&
+          Date.now() > state.scanHighlightUntil
+        ) {
+          state.scanHighlightTileIndex = null;
+          state.scanHighlightUntil = 0;
         }
-      } else {
-        tiles = [...Array(NUM_TILES)].map(() => ({
-          total: 0,
-          infected: 0,
-          players: 0,
-          vaccinatedCitizens: 0,
-          hasChest: false
-        }));
 
-        tileEntities = [...Array(NUM_TILES)].map(() => ({
-          players: [],
-          citizens: []
-        }));
+        let tiles;
+        let tileEntities;
 
-        for (const e of state.entities) {
-          const t = tiles[e.tileIndex];
-          t.total++;
-          if (e.infected) t.infected++;
+        if (NetState.roomId && !NetState.isTeacher && state.remoteTileStats) {
+          tiles = state.remoteTileStats;
 
-          if (e.type === "player") {
-            t.players++;
-            tileEntities[e.tileIndex].players.push(e);
-          } else {
-            tileEntities[e.tileIndex].citizens.push(e);
+          tileEntities = [...Array(NUM_TILES)].map(() => ({
+            players: [],
+            citizens: []
+          }));
 
-            if (e.vaccinated) {
-              t.vaccinatedCitizens++;
+          for (const e of state.entities) {
+            if (e.type === "player") {
+              tileEntities[e.tileIndex].players.push(e);
             }
           }
-        }
+        } else {
+          tiles = [...Array(NUM_TILES)].map(() => ({
+            total: 0,
+            infected: 0,
+            players: 0,
+            vaccinatedCitizens: 0,
+            hasChest: false
+          }));
 
-        state.activeChestTiles.forEach(idx => {
-          if (tiles[idx]) tiles[idx].hasChest = true;
-        });
-      }
+          tileEntities = [...Array(NUM_TILES)].map(() => ({
+            players: [],
+            citizens: []
+          }));
 
-      // 학생 클라이언트에서만 시야 제한 적용
-      let visibleRegionForStudent = null;
-      if (NetState.roomId && !NetState.isTeacher) {
-        const myPlayer = GameState.entities.find(
-          e => e.type === "player" && e.id === NetState.playerId
-        );
-        if (myPlayer) {
-          const origin = myPlayer.tileIndex;
+          for (const e of state.entities) {
+            const t = tiles[e.tileIndex];
+            t.total++;
+            if (e.infected) t.infected++;
 
-          // ★ 시야: 내 말 기준 "최단 거리 3칸 이내" 타일까지 보이게 (BFS)
-          const maxDepth = 3;
-          const visited = new Set();
-          const s = new Set();
+            if (e.type === "player") {
+              t.players++;
+              tileEntities[e.tileIndex].players.push(e);
+            } else {
+              tileEntities[e.tileIndex].citizens.push(e);
 
-          visited.add(origin);
-          s.add(origin);
-
-          const queue = [{ idx: origin, dist: 0 }];
-
-          while (queue.length > 0) {
-            const { idx, dist } = queue.shift();
-            if (dist >= maxDepth) continue;
-
-            const neighbors = getNeighborIndices(idx);
-            for (const nb of neighbors) {
-              if (!visited.has(nb)) {
-                visited.add(nb);
-                s.add(nb);
-                queue.push({ idx: nb, dist: dist + 1 });
+              if (e.vaccinated) {
+                t.vaccinatedCitizens++;
               }
             }
           }
 
-          visibleRegionForStudent = s;
-        }
-      }
-
-      for (let i = 0; i < NUM_TILES; i++) {
-        const t = tiles[i];
-        const el = state.tileElements[i];
-        if (!el) continue;
-
-        el.pop.textContent = t.total;
-
-        const isLabTile = !!t.hasChest;
-        let showLab = false;
-
-        if (state.vaccineFeatureEnabled && isLabTile) {
-          if (!NetState.roomId || NetState.isTeacher) {
-            showLab = true;
-          } else if (visibleRegionForStudent && visibleRegionForStudent.has(i)) {
-            showLab = true;
-          }
-        }
-
-        if (showLab) {
-          // 연구소 타일은 계속 파란색 계열
-          el.path.style.fill = "rgba(200, 220, 255, 0.9)";
-        } else {
-          const totalPop = t.total || 0;
-
-          // 감염 비율, 백신 접종 비율
-          const infectedRatio =
-            totalPop > 0 ? (t.infected || 0) / totalPop : 0;
-          const vaccinatedRatio =
-            totalPop > 0 ? (t.vaccinatedCitizens || 0) / totalPop : 0;
-
-          let r, g, b;
-
-          if (totalPop === 0) {
-            // 사람이 없으면 거의 흰색
-            r = g = b = 250;
-          } else {
-            // 1단계: 감염 비율에 따라 빨간색 계열 (기존 로직 비슷)
-            r = 255;
-            g = Math.round(255 * (1 - infectedRatio));
-            b = Math.round(255 * (1 - infectedRatio));
-
-            // 2단계: 백신 비율에 따라 초록색을 더해줌
-            //  - 백신 많을수록 R/B를 줄여서 초록색이 도드라지게
-            r -= Math.round(155 * vaccinatedRatio);
-            b -= Math.round(155 * vaccinatedRatio);
-
-            // 0~255 범위로 클램프
-            r = Math.max(0, Math.min(255, r));
-            g = Math.max(0, Math.min(255, g));
-            b = Math.max(0, Math.min(255, b));
-          }
-
-          el.path.style.fill = `rgb(${r}, ${g}, ${b})`;
-        }
-
-        const pieceContainer = el.pieces;
-        pieceContainer.innerHTML = "";
-
-        // ★ 말(플레이어) 표시도 시야 3칸 안쪽만 보이도록 제한
-        let canSeeThisTile = true;
-        if (NetState.roomId && !NetState.isTeacher && visibleRegionForStudent) {
-          canSeeThisTile = visibleRegionForStudent.has(i);
-        }
-
-        if (canSeeThisTile) {
-          const playersHere = tileEntities[i].players;
-          playersHere.forEach(p => {
-            const d = document.createElement("div");
-            d.className = "piece player" + (p.infected ? " infected" : "");
-
-            if (NetState.playerId && p.id === NetState.playerId) {
-              d.classList.add("me");
-            }
-            pieceContainer.appendChild(d);
+          state.activeChestTiles.forEach(idx => {
+            if (tiles[idx]) tiles[idx].hasChest = true;
           });
         }
+
+        // 학생 클라이언트에서만 시야 제한 적용
+        let visibleRegionForStudent = null;
+        if (NetState.roomId && !NetState.isTeacher) {
+          const myPlayer = GameState.entities.find(
+            e => e.type === "player" && e.id === NetState.playerId
+          );
+          if (myPlayer) {
+            const origin = myPlayer.tileIndex;
+
+            // ★ 시야: 내 말 기준 "최단 거리 3칸 이내" 타일까지 보이게 (BFS)
+            const maxDepth = 3;
+            const visited = new Set();
+            const s = new Set();
+
+            visited.add(origin);
+            s.add(origin);
+
+            const queue = [{ idx: origin, dist: 0 }];
+
+            while (queue.length > 0) {
+              const { idx, dist } = queue.shift();
+              if (dist >= maxDepth) continue;
+
+              const neighbors = getNeighborIndices(idx);
+              for (const nb of neighbors) {
+                if (!visited.has(nb)) {
+                  visited.add(nb);
+                  s.add(nb);
+                  queue.push({ idx: nb, dist: dist + 1 });
+                }
+              }
+            }
+
+            visibleRegionForStudent = s;
+          }
+        }
+
+        for (let i = 0; i < NUM_TILES; i++) {
+          const t = tiles[i];
+          const el = state.tileElements[i];
+          if (!el) continue;
+
+          el.pop.textContent = t.total;
+
+          const isLabTile = !!t.hasChest;
+          const isScanHighlighted = state.scanHighlightTileIndex === i;
+          let showLab = false;
+
+          if (state.vaccineFeatureEnabled && isLabTile) {
+            if (!NetState.roomId || NetState.isTeacher) {
+              showLab = true;
+            } else if (
+              visibleRegionForStudent &&
+              visibleRegionForStudent.has(i)
+            ) {
+              showLab = true;
+            }
+          }
+
+          // 스캔 하이라이트 타일은 시야 밖이어도 강제로 보이게
+          if (isScanHighlighted) {
+            showLab = true;
+          }
+
+          // stroke 초기화
+          el.path.classList.remove("scan-highlight");
+
+          if (showLab) {
+            el.path.style.fill = "rgba(200, 220, 255, 0.9)";
+
+            if (isScanHighlighted) {
+              el.path.classList.add("scan-highlight");
+            }
+          } else {
+            const totalPop = t.total || 0;
+
+            // 감염 비율, 백신 접종 비율
+            const infectedRatio =
+              totalPop > 0 ? (t.infected || 0) / totalPop : 0;
+            const vaccinatedRatio =
+              totalPop > 0 ? (t.vaccinatedCitizens || 0) / totalPop : 0;
+
+            let r, g, b;
+
+            if (totalPop === 0) {
+              // 사람이 없으면 거의 흰색
+              r = g = b = 250;
+            } else {
+              // 1단계: 감염 비율에 따라 빨간색 계열
+              r = 255;
+              g = Math.round(255 * (1 - infectedRatio));
+              b = Math.round(255 * (1 - infectedRatio));
+
+              // 2단계: 백신 비율에 따라 초록색을 더해줌
+              r -= Math.round(155 * vaccinatedRatio);
+              b -= Math.round(155 * vaccinatedRatio);
+
+              r = Math.max(0, Math.min(255, r));
+              g = Math.max(0, Math.min(255, g));
+              b = Math.max(0, Math.min(255, b));
+            }
+
+            el.path.style.fill = `rgb(${r}, ${g}, ${b})`;
+          }
+
+          const pieceContainer = el.pieces;
+          pieceContainer.innerHTML = "";
+
+          // ★ 말(플레이어) 표시도 시야 3칸 안쪽만 보이도록 제한
+          let canSeeThisTile = true;
+          if (NetState.roomId && !NetState.isTeacher && visibleRegionForStudent) {
+            canSeeThisTile = visibleRegionForStudent.has(i);
+          }
+
+          if (canSeeThisTile) {
+            const playersHere = tileEntities[i].players;
+            playersHere.forEach(p => {
+              const d = document.createElement("div");
+              d.className = "piece player" + (p.infected ? " infected" : "");
+
+              if (NetState.playerId && p.id === NetState.playerId) {
+                d.classList.add("me");
+              }
+              pieceContainer.appendChild(d);
+            });
+          }
+        }
       }
-    }
+
 
       function updateInfectedHistory() {
         const hist = GameState.historyCumulativeInfected;
@@ -1668,6 +1814,212 @@
         renderTiles();
         renderStats();
       }
+
+            // ★★★ 여기서부터 스캔/퀴즈 시스템 추가 ★★★
+
+      // 현재 플레이어 기준 시야 3칸 이내 타일 집합 계산 (BFS)
+      function getVisibleRegionFrom(originIndex, maxDepth = 3) {
+        const visited = new Set();
+        const s = new Set();
+        visited.add(originIndex);
+        s.add(originIndex);
+
+        const queue = [{ idx: originIndex, dist: 0 }];
+
+        while (queue.length > 0) {
+          const { idx, dist } = queue.shift();
+          if (dist >= maxDepth) continue;
+
+          const neighbors = getNeighborIndices(idx);
+          for (const nb of neighbors) {
+            if (!visited.has(nb)) {
+              visited.add(nb);
+              s.add(nb);
+              queue.push({ idx: nb, dist: dist + 1 });
+            }
+          }
+        }
+
+        return s;
+      }
+
+      // 현재(학생) 플레이어 기준, "시야 밖에 있는" 연구소 중 가장 가까운 곳 찾기
+      function findClosestHiddenLabForCurrentPlayer() {
+        const labs = Array.from(GameState.activeChestTiles || []);
+        if (!labs.length) return null;
+
+        let myPlayer = null;
+        if (NetState.playerId) {
+          myPlayer = GameState.entities.find(
+            e => e.type === "player" && e.id === NetState.playerId
+          );
+        } else {
+          // 싱글플레이 또는 방이 없을 때는 첫 번째 플레이어 기준
+          myPlayer = GameState.entities.find(e => e.type === "player");
+        }
+        if (!myPlayer) return null;
+
+        const origin = myPlayer.tileIndex;
+        const visible = getVisibleRegionFrom(origin, 3);
+
+        const hiddenLabs = labs.filter(idx => !visible.has(idx));
+        if (!hiddenLabs.length) {
+          return null;
+        }
+
+        let bestTile = null;
+        let bestDist = Infinity;
+
+        for (const tile of hiddenLabs) {
+          const d = getTileDistance(origin, tile, 30);
+          if (d < bestDist) {
+            bestDist = d;
+            bestTile = tile;
+          }
+        }
+
+        if (bestTile === null || bestDist === Infinity) return null;
+
+        return { tileIndex: bestTile, distance: bestDist };
+      }
+
+      // 퀴즈 오버레이 열기
+      function openQuizOverlay(quiz) {
+        if (!UI.quizOverlay) return;
+
+        UI.quizQuestionText.textContent = quiz.question;
+        UI.quizChoices.innerHTML = "";
+
+        quiz.choices.forEach((choiceText, idx) => {
+          const btn = document.createElement("button");
+          btn.className = "quiz-choice-btn";
+          btn.textContent = choiceText;
+          btn.addEventListener("click", () => {
+            handleQuizAnswer(idx === quiz.answerIndex);
+          });
+          UI.quizChoices.appendChild(btn);
+        });
+
+        UI.quizOverlay.classList.add("active");
+        UI.quizOverlay.style.display = "flex";
+      }
+
+      // 퀴즈 오버레이 닫기
+      function closeQuizOverlay() {
+        if (!UI.quizOverlay) return;
+        UI.quizOverlay.classList.remove("active");
+        UI.quizOverlay.style.display = "none";
+      }
+
+      // 퀴즈 정답 처리
+      function handleQuizAnswer(isCorrect) {
+        if (GameState.hasAnsweredQuiz) {
+          closeQuizOverlay();
+          return;
+        }
+        GameState.hasAnsweredQuiz = true;
+
+        if (isCorrect) {
+          addLog("정답입니다! 시야 밖에 있는 연구소 하나가 잠시 표시됩니다.");
+          applyScanHighlightForCurrentPlayer();
+        } else {
+          addLog("아쉽습니다. 이번에는 레이더가 작동하지 않습니다.");
+        }
+
+        closeQuizOverlay();
+      }
+
+      // 정답을 맞춘 학생에게만 "시야 밖 연구소" 하이라이트 적용
+      function applyScanHighlightForCurrentPlayer() {
+        const result = findClosestHiddenLabForCurrentPlayer();
+        if (!result) {
+          addLog("스캔 결과: 현재 시야 밖에 따로 숨은 연구소가 없거나 찾지 못했습니다.");
+          return;
+        }
+
+        GameState.scanHighlightTileIndex = result.tileIndex;
+        GameState.scanHighlightUntil = Date.now() + 10000; // 10초간 표시 (원하면 조정 가능)
+
+        renderAll();
+      }
+
+      // 교사가 스캔(레이더) 버튼을 눌렀을 때 호출
+      async function triggerScanForTeacher() {
+        if (!NetState.isTeacher) {
+          alert("스캔 기능은 교사만 사용할 수 있습니다.");
+          return;
+        }
+
+        const bank = GameState.quizBank || [];
+        if (!bank.length) {
+          alert("퀴즈가 아직 준비되지 않았습니다. GameState.quizBank를 채워 넣으세요.");
+          return;
+        }
+
+        const quiz = bank[Math.floor(Math.random() * bank.length)];
+        GameState.activeQuizId = quiz.id;
+        GameState.hasAnsweredQuiz = false;
+
+        // 1) 싱글플레이 또는 방이 없는 경우: 내 화면에만 퀴즈 표시
+        if (!NetState.roomId || !NetState.scanRef) {
+          openQuizOverlay(quiz);
+          return;
+        }
+
+        // 2) 멀티플레이: RTDB에 퀴즈 ID를 기록 → 학생들이 subscribeScan으로 감지
+        await NetState.scanRef.set({
+          quizId: quiz.id,
+          startedAt: Date.now()
+        });
+
+        // 교사 본인은 굳이 퀴즈를 풀 필요가 없으므로 표시하지 않음
+        addLog("스캔 퀴즈가 모든 학생에게 전송되었습니다.");
+      }
+
+      // RTDB의 scan 노드를 구독하여, 새 퀴즈가 올라오면 학생 쪽에 UI 표시
+      function subscribeScan() {
+        if (!NetState.scanRef) return;
+
+        NetState.scanRef.on("value", snapshot => {
+          const data = snapshot.val();
+          if (!data) return;
+
+          // 교사 클라이언트는 퀴즈를 표시하지 않음
+          if (NetState.isTeacher) return;
+
+          const quizId = data.quizId;
+          if (!quizId) return;
+
+          // 같은 퀴즈를 중복으로 다시 열지 않도록 체크
+          if (GameState.activeQuizId === quizId && GameState.hasAnsweredQuiz) {
+            return;
+          }
+
+          const bank = GameState.quizBank || [];
+          const quiz = bank.find(q => q.id === quizId);
+          if (!quiz) {
+            console.warn("퀴즈 ID를 찾을 수 없습니다:", quizId);
+            return;
+          }
+
+          GameState.activeQuizId = quiz.id;
+          GameState.hasAnsweredQuiz = false;
+
+          openQuizOverlay(quiz);
+        });
+      }
+
+      // 퀴즈 UI 초기화 (닫기 버튼 이벤트 연결)
+      function initQuizUI() {
+        if (UI.quizCloseBtn) {
+          UI.quizCloseBtn.addEventListener("click", () => {
+            closeQuizOverlay();
+          });
+        }
+      }
+
+      // ★★★ 스캔/퀴즈 시스템 추가 끝 ★★★
+
 
       // =========================
       // 10. 새 게임 / 턴 진행 (멀티플레이 대응)
@@ -1933,6 +2285,7 @@
         NetState.playersRef = roomRef.child("players");
         NetState.movesRef = roomRef.child("moves");
         NetState.stateRef = roomRef.child("state");
+        NetState.scanRef = roomRef.child("scan");   // ★ 스캔용 경로
 
         const players = GameState.entities.filter(e => e.type === "player");
         for (const p of players) {
@@ -1946,6 +2299,8 @@
 
         subscribeRoomState();
         subscribePlayers();
+        subscribeScan();  // ★ 스캔 구독 시작
+
         alert(`방이 생성되었습니다!\n방 ID: ${roomId}\n이 코드를 학생들에게 알려주세요.`);
       }
 
@@ -1965,6 +2320,7 @@
         NetState.playersRef = roomRef.child("players");
         NetState.movesRef = roomRef.child("moves");
         NetState.stateRef = roomRef.child("state");
+        NetState.scanRef = roomRef.child("scan");   // ★ 스캔용 경로
 
         const playersSnap = await NetState.playersRef.get();
         const playersObj = playersSnap.val() || {};
@@ -2007,6 +2363,8 @@
 
         subscribeRoomState();
         subscribePlayers();
+        subscribeScan(); // ★ 스캔 구독 시작
+
         alert(`방에 입장했습니다! (ID: ${roomId})`);
       }
 
@@ -2108,6 +2466,7 @@
         renderAll();
         addInitialLog();
         updateSelectedPlayerInfo();
+        initQuizUI(); // ★ 퀴즈 UI 초기 세팅
 
         const isTeacher = confirm("교사(방장)로 접속하시나요? 확인=예, 취소=아니오");
         const nickname = prompt("닉네임을 입력하세요", isTeacher ? "교사" : "학생");
@@ -2125,8 +2484,10 @@
 
         if (isTeacher) {
           UI.switchGameModeBtn.style.display = "inline-block";
+          UI.scanBtn.style.display = "inline-block";  // ★ 스캔 버튼 교사에게만 노출
         } else {
           UI.switchGameModeBtn.style.display = "none";
+          UI.scanBtn.style.display = "none";
         }
 
         UI.addDummyLogBtn.addEventListener("click", () =>
@@ -2135,6 +2496,9 @@
         UI.nextTurnBtn.addEventListener("click", nextTurn);
         UI.newGameBtn.addEventListener("click", resetGame);
         UI.switchGameModeBtn.addEventListener("click", toggleGameMode);
+
+        // 스캔 버튼 클릭 시 퀴즈-레이더 발동 (교사 전용)
+        UI.scanBtn.addEventListener("click", triggerScanForTeacher);
 
         UI.vaccineToggle.addEventListener("change", () => {
           GameState.vaccineFeatureEnabled = UI.vaccineToggle.checked;
@@ -2155,6 +2519,7 @@
     </script>
   </body>
   </html>
+
 
 
 
