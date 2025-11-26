@@ -1334,14 +1334,7 @@
         }
       }
 
-      // 연구소에 있는 플레이어들로부터 효과 적용
-      //  - 1편(개발 모드): 연구소에 도착하면 퀴즈를 풀고, 정답 시에만 백신 개발률 up/down
-      //  - 2편(접종 모드): 연구소 방문 횟수에 따라 영구 백신 획득 + 업그레이드
-      function applyLabEffects() {
-        const state = GameState;
-        if (!state.vaccineFeatureEnabled) return;
-
-        // ──────────────────────────────
+      // ──────────────────────────────
         // 1편: 백신 개발 모드
         //  - 연구소에 도착한 플레이어는 퀴즈를 풀고,
         //    정답을 맞혀야 백신 개발률이 변한다.
@@ -1367,6 +1360,23 @@
             }
 
             const delta = e.infected ? -loss : gain;
+
+            // ★ AI 말은 퀴즈 없이 즉시 보상 처리
+            if (!e.isHuman) {
+              state.openedChestCount = Math.max(
+                0,
+                Math.min(100, state.openedChestCount + delta)
+              );
+              e.visitedLabs.add(e.tileIndex);
+              addLog(
+                `플레이어 ${e.id}가 연구소를 분석해 백신 개발률이 ${delta > 0 ? "+" + delta : delta}% 변화했습니다. (현재 ${state.openedChestCount}%)`
+              );
+              if (state.openedChestCount >= 100 && !state.vaccineActive) {
+                state.vaccineActive = true;
+                addLog("백신이 완성되었습니다! 그런데.. 백신 접종은 어떻게 하죠?");
+              }
+              continue; // 이 플레이어 처리는 끝
+            }
 
             // ① 멀티플레이 + 교사: 해당 플레이어(학생)에게만 퀴즈 전송
             if (NetState.roomId && NetState.isTeacher && NetState.labQuizRef) {
@@ -1452,22 +1462,20 @@
               continue;
             }
 
-            // ★ 4번째 이후 연구소: 같은 자료/백신만 있어서 추가로 가져가지 않음
-            if (visitedCount > 3) {
-              addLog(
-                "이전 연구소와 같은 자료와 백신을 발견했습니다. 굳이 더 많이 들고갈 필요는 없어보이네요."
-              );
+            const stage = visitedCount; // 2 또는 3
+
+            // ★ AI 말은 퀴즈 없이 즉시 보상 처리
+            if (!e.isHuman) {
+              applyVaccinationRewardImmediate(e, stage);
               continue;
             }
 
             // 2번째, 3번째 연구소: 퀴즈를 맞혀야 백신/업그레이드 적용
-            const stage = visitedCount; // 2 또는 3
-
             // ① 멀티플레이 + 교사: 해당 플레이어(학생)에게만 퀴즈 전송
             if (NetState.roomId && NetState.isTeacher && NetState.labQuizRef) {
               const bank = state.quizBank || [];
               if (!bank.length) {
-                // 퀴즈가 없으면 예전 방식대로 바로 적용
+                // 퀴즈가 없으면 예전 로직 그대로 즉시 처리
                 applyVaccinationRewardImmediate(e, stage);
                 return;
               }
@@ -3422,6 +3430,7 @@
     </script>
   </body>
   </html>
+
 
 
 
