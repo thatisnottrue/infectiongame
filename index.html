@@ -1884,12 +1884,11 @@
               fogEl.style.display = "flex";
             }
           } else {
-            // 시야 안이거나 스캔으로 드러난 타일 → '?' 숨기기
+            // 시야 안 또는 스캔으로 드러난 타일 → '?' 숨기기
             if (fogEl) {
               fogEl.style.display = "none";
             }
-          }
-            
+
             if (showLab) {
               el.path.style.fill = "rgba(200, 220, 255, 0.9)";
 
@@ -1899,7 +1898,6 @@
             } else {
               const totalPop = t.total || 0;
 
-              // 감염 비율, 백신 접종 비율
               const infectedRatio =
                 totalPop > 0 ? (t.infected || 0) / totalPop : 0;
               const vaccinatedRatio =
@@ -1908,15 +1906,12 @@
               let r, g, b;
 
               if (totalPop === 0) {
-                // 사람이 없으면 거의 흰색
                 r = g = b = 250;
               } else {
-                // 1단계: 감염 비율에 따라 빨간색 계열
                 r = 255;
                 g = Math.round(255 * (1 - infectedRatio));
                 b = Math.round(255 * (1 - infectedRatio));
 
-                // 2단계: 백신 비율에 따라 초록색을 더해줌
                 r -= Math.round(155 * vaccinatedRatio);
                 b -= Math.round(155 * vaccinatedRatio);
 
@@ -1928,7 +1923,6 @@
               el.path.style.fill = `rgb(${r}, ${g}, ${b})`;
             }
           }
-
           const pieceContainer = el.pieces;
           pieceContainer.innerHTML = "";
 
@@ -3426,6 +3420,7 @@
     </script>
   </body>
   </html>
+
 
 
 
