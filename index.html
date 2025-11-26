@@ -1838,6 +1838,13 @@
           const el = state.tileElements[i];
           if (!el) continue;
 
+          const fogEl = el.fog;   
+          // 학생이 이 타일을 볼 수 있는지
+          let canSeeThisTile = true;
+          if (NetState.roomId && !NetState.isTeacher && visibleRegionForStudent) {
+            canSeeThisTile = visibleRegionForStudent.has(i);
+          }
+          
           el.pop.textContent = t.total;
 
           const isLabTile = !!t.hasChest;
@@ -3420,6 +3427,7 @@
     </script>
   </body>
   </html>
+
 
 
 
