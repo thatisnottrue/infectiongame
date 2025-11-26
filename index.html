@@ -3146,16 +3146,20 @@
             cumulativeHistory: state.historyCumulativeInfected,
             newHistory: state.historyNewInfected,
             tiles: tileStats,
-            gameMode: state.gameMode   // ★ 추가됨
+            gameMode: state.gameMode
           });
 
           const players = state.entities.filter(e => e.type === "player");
+          const playerUpdates = {};
+
           for (const p of players) {
-            await NetState.playersRef.child(p.id).update({
+            playerUpdates[p.id] = {
               tileIndex: p.tileIndex,
               infected: p.infected,
-            });
+            };
           }
+
+          await NetState.playersRef.update(playerUpdates);
         }
       }
 
@@ -3437,6 +3441,7 @@
     </script>
   </body>
   </html>
+
 
 
 
