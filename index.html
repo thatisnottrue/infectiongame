@@ -2650,6 +2650,9 @@
 
           // ※ labQuizRef를 바로 set(null)로 비우지 않고,
           //    다음 퀴즈에서 set({quizId, ...})로 덮어쓰는 방식 사용
+        });
+      }
+      
       // 학생/교사 공통 퀴즈 답안 처리
       function handleQuizAnswer(isCorrect) {
         // 이미 한 번 처리한 퀴즈라면 무시
@@ -3294,6 +3297,7 @@
     </script>
   </body>
   </html>
+
 
 
 
