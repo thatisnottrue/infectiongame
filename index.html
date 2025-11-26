@@ -2158,7 +2158,10 @@
           return;
         }
 
-        const quiz = bank[Math.floor(Math.random() * bank.length)];
+        // ★ 이미 정답을 맞힌 문제는 제외하고, 남는 게 없으면 전체 풀에서 선택
+        const unsolved = bank.filter(q => !GameState.quizSolvedCorrectly.has(q.id));
+        const quizPool = unsolved.length > 0 ? unsolved : bank;
+        const quiz = quizPool[Math.floor(Math.random() * quizPool.length)];
 
         GameState.activeQuizId = quiz.id;
         GameState.hasAnsweredQuiz = false;
@@ -2182,7 +2185,10 @@
           return;
         }
 
-        const quiz = bank[Math.floor(Math.random() * bank.length)];
+        // ★ 이미 정답을 맞힌 문제는 제외하고, 남는 게 없으면 전체 풀에서 선택
+        const unsolved = bank.filter(q => !GameState.quizSolvedCorrectly.has(q.id));
+        const quizPool = unsolved.length > 0 ? unsolved : bank;
+        const quiz = quizPool[Math.floor(Math.random() * quizPool.length)];
 
         GameState.activeQuizId = quiz.id;
         GameState.hasAnsweredQuiz = false;
@@ -2462,7 +2468,11 @@
           return;
         }
 
-        const quiz = bank[Math.floor(Math.random() * bank.length)];
+        // ★ 이미 정답을 맞힌 문제는 가능하면 제외한 뒤, 남는 문제에서 랜덤 선택
+        const unsolved = bank.filter(q => !GameState.quizSolvedCorrectly.has(q.id));
+        const quizPool = unsolved.length > 0 ? unsolved : bank;
+        const quiz = quizPool[Math.floor(Math.random() * quizPool.length)];
+
         GameState.activeQuizId = quiz.id;
         GameState.hasAnsweredQuiz = false;
         GameState.quizContext = "scan";
@@ -2554,6 +2564,20 @@
                   quiz = bank[0];
                 }
                 if (quiz) {
+                  // ★ 이미 정답을 맞춘 문제라면, 문제창을 띄우지 않고 자동으로 정답 처리
+                  if (GameState.quizSolvedCorrectly.has(quiz.id)) {
+                    addLog(
+                      "이전에 정답을 맞힌 연구소 문제이므로, 다시 풀지 않고 자동으로 정답 처리합니다."
+                    );
+                    // 서버(교사) 쪽에 정답 결과만 바로 전송
+                    NetState.labQuizRef.child("result").set({
+                      correct: true,
+                      answeredBy: myId,
+                      answeredAt: Date.now()
+                    });
+                    return;
+                  }
+
                   GameState.activeQuizId = quiz.id;
                   GameState.hasAnsweredQuiz = false;
                   GameState.quizContext = "lab";
@@ -2732,6 +2756,11 @@
         const context = GameState.quizContext; // "scan" | "lab" | null
         const quizId  = GameState.activeQuizId;
 
+        // ★ 정답을 맞힌 모든 퀴즈는 ID를 기록해서, 이후 다시 풀지 않도록 함
+        if (isCorrect && quizId) {
+          GameState.quizSolvedCorrectly.add(quizId);
+        }
+
         // 퀴즈창 닫기
         closeQuizOverlay();
 
@@ -2740,10 +2769,6 @@
         // ==============================
         if (context === "scan") {
           if (isCorrect) {
-            // 이 퀴즈를 이 학생이 맞췄다는 표시
-            if (quizId) {
-              GameState.quizSolvedCorrectly.add(quizId);
-            }
             addLog("정답입니다! 잠시 동안 시야 밖 연구소 위치가 강조 표시됩니다.");
             applyScanHighlightForCurrentPlayer();
           } else {
@@ -3365,6 +3390,7 @@
     </script>
   </body>
   </html>
+
 
 
 
