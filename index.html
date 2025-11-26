@@ -200,7 +200,7 @@
         justify-content: center;
         font-size: 1rem;
         font-weight: 700;
-        color: rgba(0, 0, 0, 0.2);
+        color: #000000;
         pointer-events: none;
       }
       .side-panel {
@@ -1878,49 +1878,53 @@
             !canSeeThisTile &&
             !isScanHighlighted;
 
+          // 1) 시야 여부와 상관없이, 먼저 타일 색을 항상 최신 상태로 계산
+          if (showLab) {
+            el.path.style.fill = "rgba(200, 220, 255, 0.9)";
+
+            if (isScanHighlighted) {
+              el.path.classList.add("scan-highlight");
+            }
+          } else {
+            const totalPop = t.total || 0;
+
+            // 감염 비율, 백신 접종 비율
+            const infectedRatio =
+              totalPop > 0 ? (t.infected || 0) / totalPop : 0;
+            const vaccinatedRatio =
+              totalPop > 0 ? (t.vaccinatedCitizens || 0) / totalPop : 0;
+
+            let r, g, b;
+
+            if (totalPop === 0) {
+              // 사람이 없으면 거의 흰색
+              r = g = b = 250;
+            } else {
+              // 1단계: 감염 비율에 따라 빨간색 계열
+              r = 255;
+              g = Math.round(255 * (1 - infectedRatio));
+              b = Math.round(255 * (1 - infectedRatio));
+
+              // 2단계: 백신 비율에 따라 초록색을 더해줌
+              r -= Math.round(155 * vaccinatedRatio);
+              b -= Math.round(155 * vaccinatedRatio);
+
+              r = Math.max(0, Math.min(255, r));
+              g = Math.max(0, Math.min(255, g));
+              b = Math.max(0, Math.min(255, b));
+            }
+
+            el.path.style.fill = `rgb(${r}, ${g}, ${b})`;
+          }
+
+          // 2) 그 위에 시야 연출: 색은 유지하고 '?'만 토글
           if (isHiddenFog) {
-            // 시야 밖: 타일 색은 그대로 두고 '?'만 표시
             if (fogEl) {
               fogEl.style.display = "flex";
             }
           } else {
-            // 시야 안 또는 스캔으로 드러난 타일 → '?' 숨기기
             if (fogEl) {
               fogEl.style.display = "none";
-            }
-
-            if (showLab) {
-              el.path.style.fill = "rgba(200, 220, 255, 0.9)";
-
-              if (isScanHighlighted) {
-                el.path.classList.add("scan-highlight");
-              }
-            } else {
-              const totalPop = t.total || 0;
-
-              const infectedRatio =
-                totalPop > 0 ? (t.infected || 0) / totalPop : 0;
-              const vaccinatedRatio =
-                totalPop > 0 ? (t.vaccinatedCitizens || 0) / totalPop : 0;
-
-              let r, g, b;
-
-              if (totalPop === 0) {
-                r = g = b = 250;
-              } else {
-                r = 255;
-                g = Math.round(255 * (1 - infectedRatio));
-                b = Math.round(255 * (1 - infectedRatio));
-
-                r -= Math.round(155 * vaccinatedRatio);
-                b -= Math.round(155 * vaccinatedRatio);
-
-                r = Math.max(0, Math.min(255, r));
-                g = Math.max(0, Math.min(255, g));
-                b = Math.max(0, Math.min(255, b));
-              }
-
-              el.path.style.fill = `rgb(${r}, ${g}, ${b})`;
             }
           }
           const pieceContainer = el.pieces;
@@ -3420,6 +3424,7 @@
     </script>
   </body>
   </html>
+
 
 
 
