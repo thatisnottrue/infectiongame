@@ -167,6 +167,20 @@
         display: none !important;
       }
 
+      .tile-stats {
+        margin-top: 1px;
+        font-size: 0.65rem;
+        line-height: 1.2;
+        background: rgba(255, 255, 255, 0.7);
+        padding: 1px 3px;
+        border-radius: 4px;
+        display: none; /* 기본은 숨김, 시야 안일 때만 JS에서 보이게 */
+      }
+      .tile-stats .tile-infected,
+      .tile-stats .tile-vaccinated {
+        white-space: nowrap;
+      }
+
       .tile-pieces {
         margin-top: 1px;
         display: flex;
@@ -779,7 +793,10 @@
               overlay.innerHTML = `
                 <div class="tile-bottom">
                   <div class="tile-fog">?</div>
-                  <div><span class="label">인구:</span> <span class="pop">0</span></div>
+                  <div class="tile-stats">
+                    <div class="tile-infected">감염률: 0%</div>
+                    <div class="tile-vaccinated">접종률: 0%</div>
+                  </div>
                   <div class="tile-pieces"></div>
                 </div>
               `;
@@ -801,7 +818,8 @@
                 pop: overlay.querySelector(".pop"),
                 pieces: overlay.querySelector(".tile-pieces"),
                 fog: overlay.querySelector(".tile-fog"),
-                fogPath   // ← 타일 전체 반투명 커버
+                fogPath,   // ← 타일 전체 반투명 커버
+                stats: overlay.querySelector(".tile-stats")
               };
             }
 
@@ -1871,15 +1889,12 @@
             }
           }
 
-          // 스캔 하이라이트 타일은 시야 밖이어도 강제로 보이게
           if (isScanHighlighted) {
             showLab = true;
           }
 
-          // stroke 초기화
           el.path.classList.remove("scan-highlight");
 
-          // 학생 모드에서 시야 밖 타일인지 여부
           const isHiddenFog =
             NetState.roomId &&
             !NetState.isTeacher &&
@@ -1889,20 +1904,30 @@
 
           const fogEl = el.fog;
           const fogPath = el.fogPath;
+          const statsEl = el.stats;
+          const infectedTextEl = statsEl
+            ? statsEl.querySelector(".tile-infected")
+            : null;
+          const vaccinatedTextEl = statsEl
+            ? statsEl.querySelector(".tile-vaccinated")
+            : null;
 
           // 1) 시야와 관계없이 감염/백신 색 먼저 칠함
+          let infectedRatio = 0;
+          let vaccinatedRatio = 0;
+          const totalPop = t.total || 0;
+
+          if (totalPop > 0) {
+            infectedRatio = (t.infected || 0) / totalPop;
+            vaccinatedRatio = (t.vaccinatedCitizens || 0) / totalPop;
+          }
+
           if (showLab) {
             el.path.style.fill = "rgba(200, 220, 255, 0.9)";
             if (isScanHighlighted) {
               el.path.classList.add("scan-highlight");
             }
           } else {
-            const totalPop = t.total || 0;
-            const infectedRatio =
-              totalPop > 0 ? (t.infected || 0) / totalPop : 0;
-            const vaccinatedRatio =
-              totalPop > 0 ? (t.vaccinatedCitizens || 0) / totalPop : 0;
-
             let r, g, b;
 
             if (totalPop === 0) {
@@ -1921,6 +1946,23 @@
             }
 
             el.path.style.fill = `rgb(${r}, ${g}, ${b})`;
+          }
+
+          // 1-1) 시야 안이면 감염률/접종률 텍스트 표시, 시야 밖이면 숨김
+          if (statsEl) {
+            if (canSeeThisTile || isScanHighlighted) {
+              const infPercent = Math.round(infectedRatio * 100);
+              const vacPercent = Math.round(vaccinatedRatio * 100);
+              if (infectedTextEl) {
+                infectedTextEl.textContent = `감염률: ${infPercent}%`;
+              }
+              if (vaccinatedTextEl) {
+                vaccinatedTextEl.textContent = `접종률: ${vacPercent}%`;
+              }
+              statsEl.style.display = "block";
+            } else {
+              statsEl.style.display = "none";
+            }
           }
 
           // 2) 시야 밖이면 타일 전체 fogPath + 중앙에 ? 표시
@@ -3428,6 +3470,7 @@
     </script>
   </body>
   </html>
+
 
 
 
