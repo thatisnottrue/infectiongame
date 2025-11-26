@@ -3082,7 +3082,7 @@
           state.entities
           .filter(e => e.type === "player" && e.isHuman)
           .map(e => e.id)
-        };
+        );
 
         // 멀티플레이(교사)일 때: 학생들이 제출한 이동 먼저 적용
         if (NetState.roomId && NetState.isTeacher && NetState.movesRef) {
@@ -3471,6 +3471,7 @@
     </script>
   </body>
   </html>
+
 
 
 
