@@ -1758,15 +1758,6 @@
           }
         }
 
-        // ★ 연구소까지 최소 거리가 "2칸 이하"가 된 순간 로그 힌트 출력
-        if (
-          minDistToLabForFocus <= 2 &&
-          GameState.prevNearLabDistance > 2 &&       // 이전엔 더 멀었음
-          minDistToLabForFocus < Infinity
-        ) {
-          addLog("주변 건물 간판에 연구소 표시가 보입니다. 근처를 더 조사해보세요.");
-        }
-
         // 직전 거리 갱신 (다음 프레임/턴에서 비교용)
         GameState.prevNearLabDistance = minDistToLabForFocus;
 
@@ -2224,9 +2215,9 @@
             });
 
             if (isCorrect) {
-              addLog("연구소 문제 정답입니다! 선생님 화면에서 백신 개발률이 갱신됩니다.");
+              addLog("정답입니다! 바이러스의 비밀 한가지가 풀렸습니다. 백신 개발률이 상승합니다.");
             } else {
-              addLog("아쉽지만 이번에는 연구소 데이터를 제대로 해석하지 못했습니다.");
+              addLog("아쉽지만 데이터를 제대로 해석하지 못했습니다. 백신 개발률이 변하지 않습니다.");
             }
 
             GameState.quizContext = null;
@@ -2931,6 +2922,7 @@
     </script>
   </body>
   </html>
+
 
 
 
