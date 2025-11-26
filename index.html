@@ -1038,9 +1038,34 @@
             return;
           }
 
-          const neighbors = getNeighborIndices(currentIndex);
-          if (!neighbors.includes(tileIndex)) {
-            addLog("인접한 타일만 이동 선택이 가능합니다.");
+          // ★ 게임 모드 & 강화 백신 여부에 따라 이동 가능 최대 칸 수 결정
+          let maxStep = 1;
+          if (
+            state.gameMode === GameModes.VACCINATION &&
+            myPlayer.enhancedVaccine
+          ) {
+            maxStep = 2;
+          }
+
+          // ★ 1칸 또는 2칸 이내로 도달 가능한 타일 집합 계산
+          const neighbors1 = getNeighborIndices(currentIndex);
+          const reachable = new Set();
+          neighbors1.forEach(n => reachable.add(n));
+
+          if (maxStep >= 2) {
+            neighbors1.forEach(n => {
+              getNeighborIndices(n).forEach(nn => {
+                if (nn !== currentIndex) reachable.add(nn);
+              });
+            });
+          }
+
+          if (!reachable.has(tileIndex)) {
+            if (maxStep === 1) {
+              addLog("인접한 타일만 이동 선택이 가능합니다.");
+            } else {
+              addLog("이동 가능한 범위(최대 2칸) 내의 타일만 선택이 가능합니다.");
+            }
             return;
           }
 
@@ -1129,6 +1154,7 @@
           selectPlayerOnTile(tileIndex);
         }
       }
+
 
       // =========================
       // 8. 이동/감염/연구소(센터) 로직
@@ -2565,7 +2591,19 @@
                 return;
               }
 
+              const me = GameState.entities.find(
+                e => e.type === "player" && e.id === myId
+              );
+
               if (reward === "vaccineSuccess") {
+                // ★ 로컬 플레이어에도 백신 보유 상태 반영
+                if (me) {
+                  me.hasVaccine = true;
+                  if (!me.enhancedVaccine) {
+                    me.enhancedVaccine = false;
+                  }
+                }
+
                 addLog(
                   "적은 양이지만, 실제로 사용할 수 있는 백신 샘플이 들어있었습니다. 이제 이동할 때마다 주변 시민에게 접종할 수 있습니다."
                 );
@@ -2579,7 +2617,18 @@
               if (!correct) {
                 return;
               }
+
+              const me = GameState.entities.find(
+                e => e.type === "player" && e.id === myId
+              );
+
               if (reward === "vaccineAndUpgrade") {
+                // ★ 백신 + 업그레이드 둘 다 로컬 상태에 반영
+                if (me) {
+                  me.hasVaccine = true;
+                  me.enhancedVaccine = true;
+                }
+
                 addLog(
                   "금고를 열고 충분한 양의 백신을 찾아냈습니다!"
                 );
@@ -2590,6 +2639,14 @@
                   "지하실에서 외골격 슈트를 발견했습니다! 이제부터 한 턴에 두 칸씩 이동이 가능합니다."
                 );
               } else if (reward === "upgradeOnly") {
+                // ★ 기존 백신에 업그레이드만 반영
+                if (me) {
+                  if (!me.hasVaccine) {
+                    me.hasVaccine = true;  // 안전장치: 서버 기준으론 이미 보유 중일 것
+                  }
+                  me.enhancedVaccine = true;
+                }
+
                 addLog(
                   "금고에서 지하실 출입증을 발견했습니다."
                 );
@@ -2597,6 +2654,7 @@
                   "지하실에서 외골격 슈트를 발견했습니다! 이제부터 한 턴에 두 칸씩 이동이 가능합니다."
                 );
               } else if (reward === "alreadyMax") {
+                // 이미 강화 상태라면 별도 변경 없음
                 addLog(
                   "이전 연구소와 같은 자료와 백신을 발견했습니다. 굳이 더 많이 들고갈 필요는 없어보이네요."
                 );
@@ -3299,6 +3357,7 @@
     </script>
   </body>
   </html>
+
 
 
 
