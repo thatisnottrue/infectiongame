@@ -1205,7 +1205,7 @@
         // 0. 타일별 "백신이 아직 필요한 시민 수" 계산
         //    (감염 X, 회복 X, 접종 X 인 시민)
         // ──────────────────────────────
-        const tileNeed = [.Array(N)].map(() => 0);
+        const tileNeed = Array(N).fill(0);
         for (const e of state.entities) {
           if (e.type !== "citizen") continue;
           if (!e.infected && !e.recovered && !e.vaccinated) {
@@ -3449,6 +3449,7 @@
     </script>
   </body>
   </html>
+
 
 
 
