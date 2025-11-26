@@ -1848,13 +1848,12 @@
           const el = state.tileElements[i];
           if (!el) continue;
 
-          const fogEl = el.fog;   
           // 학생이 이 타일을 볼 수 있는지
           let canSeeThisTile = true;
           if (NetState.roomId && !NetState.isTeacher && visibleRegionForStudent) {
             canSeeThisTile = visibleRegionForStudent.has(i);
           }
-          
+
           el.pop.textContent = t.total;
 
           const isLabTile = !!t.hasChest;
@@ -1880,59 +1879,59 @@
           // stroke 초기화
           el.path.classList.remove("scan-highlight");
 
-          // ★ 학생 모드에서 시야 밖 타일은 회색 + '?' 표시 (단, 스캔 하이라이트 타일은 예외)
+          // 학생 모드에서 시야 밖 타일인지 여부
           const isHiddenFog =
-              NetState.roomId &&
-              !NetState.isTeacher &&
-              visibleRegionForStudent &&
-              !canSeeThisTile &&
-              !isScanHighlighted;
+            NetState.roomId &&
+            !NetState.isTeacher &&
+            visibleRegionForStudent &&
+            !canSeeThisTile &&
+            !isScanHighlighted;
 
-            const fogEl = el.fog;
-            const fogPath = el.fogPath;
+          const fogEl = el.fog;
+          const fogPath = el.fogPath;
 
-            // 1) 시야와 관계없이 감염/백신 색 먼저 칠함
-            if (showLab) {
-              el.path.style.fill = "rgba(200, 220, 255, 0.9)";
-              if (isScanHighlighted) {
-                el.path.classList.add("scan-highlight");
-              }
+          // 1) 시야와 관계없이 감염/백신 색 먼저 칠함
+          if (showLab) {
+            el.path.style.fill = "rgba(200, 220, 255, 0.9)";
+            if (isScanHighlighted) {
+              el.path.classList.add("scan-highlight");
+            }
+          } else {
+            const totalPop = t.total || 0;
+            const infectedRatio =
+              totalPop > 0 ? (t.infected || 0) / totalPop : 0;
+            const vaccinatedRatio =
+              totalPop > 0 ? (t.vaccinatedCitizens || 0) / totalPop : 0;
+
+            let r, g, b;
+
+            if (totalPop === 0) {
+              r = g = b = 250;
             } else {
-              const totalPop = t.total || 0;
-              const infectedRatio =
-                totalPop > 0 ? (t.infected || 0) / totalPop : 0;
-              const vaccinatedRatio =
-                totalPop > 0 ? (t.vaccinatedCitizens || 0) / totalPop : 0;
+              r = 255;
+              g = Math.round(255 * (1 - infectedRatio));
+              b = Math.round(255 * (1 - infectedRatio));
 
-              let r, g, b;
+              r -= Math.round(155 * vaccinatedRatio);
+              b -= Math.round(155 * vaccinatedRatio);
 
-              if (totalPop === 0) {
-                r = g = b = 250;
-              } else {
-                r = 255;
-                g = Math.round(255 * (1 - infectedRatio));
-                b = Math.round(255 * (1 - infectedRatio));
-
-                r -= Math.round(155 * vaccinatedRatio);
-                b -= Math.round(155 * vaccinatedRatio);
-
-                r = Math.max(0, Math.min(255, r));
-                g = Math.max(0, Math.min(255, g));
-                b = Math.max(0, Math.min(255, b));
-              }
-
-              el.path.style.fill = `rgb(${r}, ${g}, ${b})`;
+              r = Math.max(0, Math.min(255, r));
+              g = Math.max(0, Math.min(255, g));
+              b = Math.max(0, Math.min(255, b));
             }
 
-            // 2) 시야 밖이면 타일 전체 fogPath + 중앙에 ? 표시
-            if (isHiddenFog) {
-              if (fogEl) fogEl.style.display = "flex";
-              if (fogPath) fogPath.style.display = "block";
-            } else {
-              if (fogEl) fogEl.style.display = "none";
-              if (fogPath) fogPath.style.display = "none";
-            }
+            el.path.style.fill = `rgb(${r}, ${g}, ${b})`;
           }
+
+          // 2) 시야 밖이면 타일 전체 fogPath + 중앙에 ? 표시
+          if (isHiddenFog) {
+            if (fogEl) fogEl.style.display = "flex";
+            if (fogPath) fogPath.style.display = "block";
+          } else {
+            if (fogEl) fogEl.style.display = "none";
+            if (fogPath) fogPath.style.display = "none";
+          }
+
           const pieceContainer = el.pieces;
           pieceContainer.innerHTML = "";
 
@@ -1951,8 +1950,7 @@
           }
         }
       }
-
-
+      
       function updateInfectedHistory() {
         const hist = GameState.historyCumulativeInfected;
         if (hist.length === 0) {
@@ -3430,6 +3428,7 @@
     </script>
   </body>
   </html>
+
 
 
 
