@@ -761,7 +761,7 @@
               // ★ 타일 전체를 덮는 fogPath(SVG 레이어) 생성
               const fogPath = path.cloneNode(false);
               fogPath.removeAttribute("data-tile-index");
-              fogPath.style.fill = "rgba(0, 0, 0, 0.2)";
+              fogPath.style.fill = "rgba(0, 0, 0, 0.1)";
               fogPath.style.pointerEvents = "none";
               fogPath.style.display = "none";
               path.parentNode.appendChild(fogPath);
@@ -3428,6 +3428,7 @@
     </script>
   </body>
   </html>
+
 
 
 
