@@ -1860,11 +1860,14 @@
         // 직전 거리 갱신 (다음 프레임/턴에서 비교용)
         GameState.prevNearLabDistance = minDistToLabForFocus;
 
-        
         for (let i = 0; i < NUM_TILES; i++) {
           const t = tiles[i];
           const el = state.tileElements[i];
           if (!el) continue;
+
+          const fogEl = el.fog;
+          const fogPath = el.fogPath;
+          const statsEl = el.stats;
 
           // 학생이 이 타일을 볼 수 있는지
           let canSeeThisTile = true;
@@ -1872,7 +1875,10 @@
             canSeeThisTile = visibleRegionForStudent.has(i);
           }
 
-          el.pop.textContent = t.total;
+          // 인구 수 텍스트 (pop 엘리먼트가 있을 때만)
+          if (el.pop) {
+            el.pop.textContent = t.total;
+          }
 
           const isLabTile = !!t.hasChest;
           const isScanHighlighted = state.scanHighlightTileIndex === i;
@@ -1889,28 +1895,13 @@
             }
           }
 
+          // 스캔 하이라이트 타일은 시야 밖이어도 강제로 보이게
           if (isScanHighlighted) {
             showLab = true;
           }
 
+          // stroke 초기화
           el.path.classList.remove("scan-highlight");
-
-          const isHiddenFog =
-            NetState.roomId &&
-            !NetState.isTeacher &&
-            visibleRegionForStudent &&
-            !canSeeThisTile &&
-            !isScanHighlighted;
-
-          const fogEl = el.fog;
-          const fogPath = el.fogPath;
-          const statsEl = el.stats;
-          const infectedTextEl = statsEl
-            ? statsEl.querySelector(".tile-infected")
-            : null;
-          const vaccinatedTextEl = statsEl
-            ? statsEl.querySelector(".tile-vaccinated")
-            : null;
 
           // 1) 시야와 관계없이 감염/백신 색 먼저 칠함
           let infectedRatio = 0;
@@ -1931,12 +1922,15 @@
             let r, g, b;
 
             if (totalPop === 0) {
+              // 사람이 없으면 거의 흰색
               r = g = b = 250;
             } else {
+              // 1단계: 감염 비율에 따라 빨간색 계열
               r = 255;
               g = Math.round(255 * (1 - infectedRatio));
               b = Math.round(255 * (1 - infectedRatio));
 
+              // 2단계: 백신 비율에 따라 초록색을 더해줌
               r -= Math.round(155 * vaccinatedRatio);
               b -= Math.round(155 * vaccinatedRatio);
 
@@ -1948,36 +1942,45 @@
             el.path.style.fill = `rgb(${r}, ${g}, ${b})`;
           }
 
-          // 1-1) 시야 안이면 감염률/접종률 텍스트 표시, 시야 밖이면 숨김
-          if (statsEl) {
-            if (canSeeThisTile || isScanHighlighted) {
-              const infPercent = Math.round(infectedRatio * 100);
-              const vacPercent = Math.round(vaccinatedRatio * 100);
+          // 2) 시야 밖인지 판정 (스캔 하이라이트는 예외)
+          const isHiddenFog =
+            NetState.roomId &&
+            !NetState.isTeacher &&
+            visibleRegionForStudent &&
+            !canSeeThisTile &&
+            !isScanHighlighted;
+
+          // 3) 시야 밖이면 반투명 커버 + ? 보이기, 텍스트는 숨기기
+          if (isHiddenFog) {
+            if (fogEl) fogEl.style.display = "flex";
+            if (fogPath) fogPath.style.display = "block";
+            if (statsEl) statsEl.style.display = "none";
+          } else {
+            if (fogEl) fogEl.style.display = "none";
+            if (fogPath) fogPath.style.display = "none";
+
+            // 시야 안쪽이고, statsEl가 있으면 감염률/백신률 표시
+            if (statsEl && canSeeThisTile) {
+              const infectedTextEl = statsEl.querySelector(".tile-infected");
+              const vaccinatedTextEl = statsEl.querySelector(".tile-vaccinated");
+
               if (infectedTextEl) {
-                infectedTextEl.textContent = `감염률: ${infPercent}%`;
+                infectedTextEl.textContent = `감염률: ${Math.round(infectedRatio * 100)}%`;
               }
               if (vaccinatedTextEl) {
-                vaccinatedTextEl.textContent = `접종률: ${vacPercent}%`;
+                vaccinatedTextEl.textContent = `백신률: ${Math.round(vaccinatedRatio * 100)}%`;
               }
+
               statsEl.style.display = "block";
-            } else {
+            } else if (statsEl) {
               statsEl.style.display = "none";
             }
           }
 
-          // 2) 시야 밖이면 타일 전체 fogPath + 중앙에 ? 표시
-          if (isHiddenFog) {
-            if (fogEl) fogEl.style.display = "flex";
-            if (fogPath) fogPath.style.display = "block";
-          } else {
-            if (fogEl) fogEl.style.display = "none";
-            if (fogPath) fogPath.style.display = "none";
-          }
-
+          // 4) 말(플레이어)은 시야 안 타일에서만 보이게
           const pieceContainer = el.pieces;
           pieceContainer.innerHTML = "";
 
-          // 말(플레이어)은 시야 안 타일에서만 보이게
           if (canSeeThisTile) {
             const playersHere = tileEntities[i].players;
             playersHere.forEach(p => {
@@ -3470,6 +3473,7 @@
     </script>
   </body>
   </html>
+
 
 
 
