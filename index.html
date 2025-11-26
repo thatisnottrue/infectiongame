@@ -2584,8 +2584,13 @@
         // 2) 연구소(Lab) 퀴즈인 경우
         // ==============================
         if (context === "lab") {
-          // 멀티플레이 학생인 경우 → RTDB에 결과 기록
+          // ★ 멀티플레이 '학생' 클라이언트일 때만
+          //    - 여기서 찍는 로그는 그 학생 화면에만 보임
           if (NetState.roomId && !NetState.isTeacher && NetState.labQuizRef) {
+            if (isCorrect) {
+              addLog("바이러스의 비밀을 한가지 밝혀냈습니다! 백신개발률이 상승합니다.");
+            }
+
             NetState.labQuizRef.child("result").set({
               correct: isCorrect,
               answeredBy: NetState.playerId || null,
@@ -3125,6 +3130,7 @@
     </script>
   </body>
   </html>
+
 
 
 
