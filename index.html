@@ -3077,10 +3077,12 @@
         // 턴 증가 (회복 처리 등에서 사용)
         state.currentTurn++;
 
-        // 자동 이동 방지용 Set이 없다면 생성
-        if (!state.playersMovedThisTurn) {
-          state.playersMovedThisTurn = new Set();
-        }
+        // 조종되는 말은 자동 이동에서 제외되도록, 턴 시작 시점에 바로 기록
+        state.playersMovedThisTurn = new Set(
+          state.entities
+          .filter(e => e.type === "player" && e.isHuman)
+          .map(e => e.id)
+        };
 
         // 멀티플레이(교사)일 때: 학생들이 제출한 이동 먼저 적용
         if (NetState.roomId && NetState.isTeacher && NetState.movesRef) {
@@ -3469,6 +3471,7 @@
     </script>
   </body>
   </html>
+
 
 
 
