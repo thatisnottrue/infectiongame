@@ -643,14 +643,6 @@
         labQuizRef: null       // 연구소 퀴즈용 상태 경로
       };
       // ★★★ NetState 끝 ★★★
-      // ★ 멀티플레이 리스너 저장용 (나중에 깔끔하게 off() 하기 위해)
-      const MultiplayerListeners = {
-        state: null,
-        players: null,
-        moves: null,
-        scan: null,
-        labQuiz: null
-      };
       
       // =========================
       // 3. UI 요소 참조 (DOM)
@@ -2034,20 +2026,6 @@
         }
       }
 
-      // 렌더링 Throttle (멀티플레이에서 과도한 재렌더 방지)
-      // =========================
-      let renderScheduled = false;
-
-      function scheduleRenderAll() {
-        if (renderScheduled) return;
-        renderScheduled = true;
-
-        requestAnimationFrame(() => {
-          renderScheduled = false;
-          renderAll();
-        });
-      }
-
       function renderAll() {
         renderTiles();
         renderStats();
@@ -3306,121 +3284,6 @@
         alert(`방에 입장했습니다! (ID: ${roomId})`);
       }
 
-      // 멀티플레이 리스너 attach / detach
-      // =========================
-      function detachMultiplayerListeners() {
-        // 이미 붙어 있으면 전부 off
-        if (NetState.stateRef && MultiplayerListeners.state) {
-          NetState.stateRef.off("value", MultiplayerListeners.state);
-          MultiplayerListeners.state = null;
-        }
-        if (NetState.playersRef && MultiplayerListeners.players) {
-          NetState.playersRef.off("value", MultiplayerListeners.players);
-          MultiplayerListeners.players = null;
-        }
-        if (NetState.movesRef && MultiplayerListeners.moves) {
-          NetState.movesRef.off("child_added", MultiplayerListeners.moves);
-          MultiplayerListeners.moves = null;
-        }
-        if (NetState.scanRef && MultiplayerListeners.scan) {
-          NetState.scanRef.off("value", MultiplayerListeners.scan);
-          MultiplayerListeners.scan = null;
-        }
-        if (NetState.labQuizRef && MultiplayerListeners.labQuiz) {
-          NetState.labQuizRef.off("value", MultiplayerListeners.labQuiz);
-          MultiplayerListeners.labQuiz = null;
-        }
-      }
-
-      function attachMultiplayerListeners(roomId) {
-        // 먼저 이전 리스너 정리
-        detachMultiplayerListeners();
-
-        if (!roomId) return;
-
-        // 방 참조 셋업
-        const roomRef = rtdb.ref(`rooms/${roomId}`);
-        NetState.roomRef = roomRef;
-        NetState.playersRef = roomRef.child("players");
-        NetState.movesRef = roomRef.child("moves");
-        NetState.stateRef = roomRef.child("state");
-        NetState.scanRef = roomRef.child("scan");
-        NetState.labQuizRef = roomRef.child("labQuiz");
-
-        // --- state 리스너 ---
-        MultiplayerListeners.state = snap => {
-          const data = snap.val();
-          if (!data) return;
-
-          // 기존에 stateRef.on("value", ...) 안에서 하던 내용 그대로 옮겨오면 됨
-          GameState.currentTurn = data.currentTurn ?? GameState.currentTurn;
-          GameState.remoteInfectedTotal = data.infectedTotal ?? null;
-          GameState.remoteTileStats = data.tileStats ?? null;
-
-          scheduleRenderAll();   // ← 2번에서 만들 throttle된 렌더 함수
-        };
-        NetState.stateRef.on("value", MultiplayerListeners.state);
-
-        // --- players 리스너 ---
-        MultiplayerListeners.players = snap => {
-          const playersData = snap.val() || {};
-
-          // 기존 playersRef.on("value", ...) 코드에서
-          // GameState.entities 중 player 부분만 갱신하는 로직을 여기에 넣기
-          // (간단 예시)
-          for (const e of GameState.entities) {
-            if (e.type !== "player") continue;
-            const pData = playersData[e.id];
-            if (!pData) continue;
-            e.tileIndex = pData.tileIndex ?? e.tileIndex;
-            e.infected = !!pData.infected;
-          }
-
-          scheduleRenderAll();
-        };
-        NetState.playersRef.on("value", MultiplayerListeners.players);
-
-        // --- moves 리스너 ---
-        MultiplayerListeners.moves = snap => {
-          const move = snap.val();
-          if (!move) return;
-
-          // 기존 movesRef.on("child_added", ...) 안의 내용을 여기에 옮겨 넣으면 됨
-          // 예시: 서버가 결정한 이동/전염 처리 후 렌더
-          // applyMoveFromServer(move);
-
-          scheduleRenderAll();
-        };
-        NetState.movesRef.on("child_added", MultiplayerListeners.moves);
-
-        // --- scan 리스너 ---
-        MultiplayerListeners.scan = snap => {
-          const data = snap.val();
-          if (!data) return;
-
-          // 기존 scanRef.on("value", ...) 안에서 하던 내용
-          // (스캔 하이라이트, 퀴즈 시작 등) 옮기기
-          // 예시:
-          GameState.scanHighlightTileIndex = data.tileIndex ?? null;
-          GameState.scanHighlightUntil = data.highlightUntil ?? 0;
-
-          scheduleRenderAll();
-        };
-        NetState.scanRef.on("value", MultiplayerListeners.scan);
-
-        // --- labQuiz 리스너 ---
-        MultiplayerListeners.labQuiz = snap => {
-          const data = snap.val();
-          if (!data) return;
-
-          // 기존 labQuizRef.on("value", ...) 안의 내용 옮기기
-          // (연구소 퀴즈 열기/결과 반영 등)
-
-          scheduleRenderAll();
-        };
-        NetState.labQuizRef.on("value", MultiplayerListeners.labQuiz);
-      }
-
       function subscribeRoomState() {
         if (!NetState.stateRef) return;
 
@@ -3574,7 +3437,6 @@
     </script>
   </body>
   </html>
-
 
 
 
