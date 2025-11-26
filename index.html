@@ -2587,8 +2587,68 @@
           // ★ 멀티플레이 '학생' 클라이언트일 때만
           //    - 여기서 찍는 로그는 그 학생 화면에만 보임
           if (NetState.roomId && !NetState.isTeacher && NetState.labQuizRef) {
-            if (isCorrect) {
-              addLog("바이러스의 비밀을 한가지 밝혀냈습니다! 백신개발률이 상승합니다.");
+            // ▶ 게임 모드(1편/2편) + 단계(2번째/3번째 연구소)에 따라
+            //    학생 화면 로그를 분리해서 출력
+            if (GameState.gameMode === GameModes.DEVELOPMENT) {
+              // 1편: 백신 개발 모드
+              if (isCorrect) {
+                addLog(
+                  "바이러스의 비밀 한가지를 밝혀냈습니다! 백신 개발률이 상승합니다."
+                );
+              } else {
+                addLog(
+                  "연구에 실패했습니다. 다시 시도할 필요가 있겠어요."
+                );
+              }
+            } else if (GameState.gameMode === GameModes.VACCINATION) {
+              // 2편: 백신 접종 모드
+              const stage = GameState.labQuizPendingVaccinationStage || 0;
+
+              if (stage === 2) {
+                // 두 번째 연구소
+                if (isCorrect) {
+                  addLog(
+                    "과학자의 금고를 열고, 숨겨진 백신 샘플을 찾아냈습니다."
+                  );
+                } else {
+                  addLog(
+                    "암호가 틀린탓일까요? 금고가 열리지 않고 더 강한 보안으로 잠겼습니다. 다시 열 수 있는 방법은 없는듯 보입니다..."
+                  );
+                }
+              } else if (stage === 3) {
+                // 세 번째 연구소
+                if (isCorrect) {
+                  addLog(
+                    "정답입니다! 세 번째 연구소의 기록을 해석해, 강력한 백신에 대한 모든 정보를 얻었습니다! 이제 백신을 접종할 수 있겠네요 :)"
+                  );
+                } else {
+                  addLog(
+                    "아쉽지만 오답입니다. 세 번째 연구소의 복잡한 기록을 해석하지 못해, 최종 백신 시스템은 아직 완성되지 않았습니다."
+                  );
+                }
+              } else {
+                // 예외적으로 stage를 모를 때
+                if (isCorrect) {
+                  addLog(
+                    "정답입니다! 연구소 기록을 해석해 백신과 관련된 중요한 단서를 얻었습니다."
+                  );
+                } else {
+                  addLog(
+                    "아쉽지만 오답입니다. 이번 연구소에서는 새로운 단서를 얻지 못했습니다."
+                  );
+                }
+              }
+            } else {
+              // 혹시 모드 정보가 없을 때의 안전 로그
+              if (isCorrect) {
+                addLog(
+                  "정답입니다! 연구소 문제를 해결해 중요한 정보를 얻었습니다."
+                );
+              } else {
+                addLog(
+                  "아쉽지만 오답입니다. 다시 한 번 생각해 보세요."
+                );
+              }
             }
 
             NetState.labQuizRef.child("result").set({
@@ -3130,6 +3190,7 @@
     </script>
   </body>
   </html>
+
 
 
 
