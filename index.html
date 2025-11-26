@@ -1196,11 +1196,16 @@
         const state = GameState;
         const N = GameConfig.NUM_TILES;
 
+        // 멀티플레이에서 학생 브라우저에서는 자동 이동을 절대 실행하지 않음
+        if (NetState.roomId && !NetState.isTeacher) {
+          return;
+        }
+
         // ──────────────────────────────
         // 0. 타일별 "백신이 아직 필요한 시민 수" 계산
         //    (감염 X, 회복 X, 접종 X 인 시민)
         // ──────────────────────────────
-        const tileNeed = [...Array(N)].map(() => 0);
+        const tileNeed = [.Array(N)].map(() => 0);
         for (const e of state.entities) {
           if (e.type !== "citizen") continue;
           if (!e.infected && !e.recovered && !e.vaccinated) {
@@ -1215,6 +1220,7 @@
           for (const p of state.entities) {
             if (p.type !== "player") continue;
             if (p.isHuman) continue;
+            if (state.playersMovedThisTurn && state.playersMovedThisTurn.has(p.id)) continue;
 
             const neighbors = getNeighborIndices(p.tileIndex);
             if (neighbors.length === 0) continue;
@@ -1228,7 +1234,8 @@
 
         for (const p of state.entities) {
           if (p.type !== "player") continue;
-          if (p.isHuman) continue;
+          if (p.isHuman) continue; // 학생/교사가 조종하는 말은 자동 이동 금지
+          if (state.playersMovedThisTurn && state.playersMovedThisTurn.has(p.id)) continue;
 
           if (!p.visitedLabs) {
             p.visitedLabs = new Set();
@@ -3103,6 +3110,7 @@
             if (reachable.has(dest)) {
               p.tileIndex = dest;
               addLog(`(적용) ${p.id} : #${currentIndex} → #${dest}`);
+              state.playersMovedThisTurn.add(p.id);
             }
           }
 
@@ -3441,6 +3449,7 @@
     </script>
   </body>
   </html>
+
 
 
 
