@@ -758,6 +758,14 @@
               const path = svgElement.querySelector(`path[data-tile-index="${i}"]`);
               if (!path) continue;
 
+              // ★ 타일 전체를 덮는 fogPath(SVG 레이어) 생성
+              const fogPath = path.cloneNode(false);
+              fogPath.removeAttribute("data-tile-index");
+              fogPath.style.fill = "rgba(0, 0, 0, 0.2)";
+              fogPath.style.pointerEvents = "none";
+              fogPath.style.display = "none";
+              path.parentNode.appendChild(fogPath);
+
               const center = GameState.tileCenters[i];
               const leftPercent = (center.x / viewW) * 100;
               const topPercent = (center.y / viewH) * 100;
@@ -770,7 +778,7 @@
 
               overlay.innerHTML = `
                 <div class="tile-bottom">
-                <div class="tile-fog">?</div>
+                  <div class="tile-fog">?</div>
                   <div><span class="label">인구:</span> <span class="pop">0</span></div>
                   <div class="tile-pieces"></div>
                 </div>
@@ -792,7 +800,8 @@
                 overlay,
                 pop: overlay.querySelector(".pop"),
                 pieces: overlay.querySelector(".tile-pieces"),
-                fog: overlay.querySelector(".tile-fog")
+                fog: overlay.querySelector(".tile-fog"),
+                fogPath   // ← 타일 전체 반투명 커버
               };
             }
 
@@ -1873,59 +1882,55 @@
 
           // ★ 학생 모드에서 시야 밖 타일은 회색 + '?' 표시 (단, 스캔 하이라이트 타일은 예외)
           const isHiddenFog =
-            NetState.roomId &&
-            !NetState.isTeacher &&
-            visibleRegionForStudent &&
-            !canSeeThisTile &&
-            !isScanHighlighted;
+              NetState.roomId &&
+              !NetState.isTeacher &&
+              visibleRegionForStudent &&
+              !canSeeThisTile &&
+              !isScanHighlighted;
 
-          // 1) 시야 여부와 상관없이, 먼저 타일 색을 항상 최신 상태로 계산
-          if (showLab) {
-            el.path.style.fill = "rgba(200, 220, 255, 0.9)";
+            const fogEl = el.fog;
+            const fogPath = el.fogPath;
 
-            if (isScanHighlighted) {
-              el.path.classList.add("scan-highlight");
-            }
-          } else {
-            const totalPop = t.total || 0;
-
-            // 감염 비율, 백신 접종 비율
-            const infectedRatio =
-              totalPop > 0 ? (t.infected || 0) / totalPop : 0;
-            const vaccinatedRatio =
-              totalPop > 0 ? (t.vaccinatedCitizens || 0) / totalPop : 0;
-
-            let r, g, b;
-
-            if (totalPop === 0) {
-              // 사람이 없으면 거의 흰색
-              r = g = b = 250;
+            // 1) 시야와 관계없이 감염/백신 색 먼저 칠함
+            if (showLab) {
+              el.path.style.fill = "rgba(200, 220, 255, 0.9)";
+              if (isScanHighlighted) {
+                el.path.classList.add("scan-highlight");
+              }
             } else {
-              // 1단계: 감염 비율에 따라 빨간색 계열
-              r = 255;
-              g = Math.round(255 * (1 - infectedRatio));
-              b = Math.round(255 * (1 - infectedRatio));
+              const totalPop = t.total || 0;
+              const infectedRatio =
+                totalPop > 0 ? (t.infected || 0) / totalPop : 0;
+              const vaccinatedRatio =
+                totalPop > 0 ? (t.vaccinatedCitizens || 0) / totalPop : 0;
 
-              // 2단계: 백신 비율에 따라 초록색을 더해줌
-              r -= Math.round(155 * vaccinatedRatio);
-              b -= Math.round(155 * vaccinatedRatio);
+              let r, g, b;
 
-              r = Math.max(0, Math.min(255, r));
-              g = Math.max(0, Math.min(255, g));
-              b = Math.max(0, Math.min(255, b));
+              if (totalPop === 0) {
+                r = g = b = 250;
+              } else {
+                r = 255;
+                g = Math.round(255 * (1 - infectedRatio));
+                b = Math.round(255 * (1 - infectedRatio));
+
+                r -= Math.round(155 * vaccinatedRatio);
+                b -= Math.round(155 * vaccinatedRatio);
+
+                r = Math.max(0, Math.min(255, r));
+                g = Math.max(0, Math.min(255, g));
+                b = Math.max(0, Math.min(255, b));
+              }
+
+              el.path.style.fill = `rgb(${r}, ${g}, ${b})`;
             }
 
-            el.path.style.fill = `rgb(${r}, ${g}, ${b})`;
-          }
-
-          // 2) 그 위에 시야 연출: 색은 유지하고 '?'만 토글
-          if (isHiddenFog) {
-            if (fogEl) {
-              fogEl.style.display = "flex";
-            }
-          } else {
-            if (fogEl) {
-              fogEl.style.display = "none";
+            // 2) 시야 밖이면 타일 전체 fogPath + 중앙에 ? 표시
+            if (isHiddenFog) {
+              if (fogEl) fogEl.style.display = "flex";
+              if (fogPath) fogPath.style.display = "block";
+            } else {
+              if (fogEl) fogEl.style.display = "none";
+              if (fogPath) fogPath.style.display = "none";
             }
           }
           const pieceContainer = el.pieces;
@@ -3425,6 +3430,7 @@
     </script>
   </body>
   </html>
+
 
 
 
