@@ -2546,6 +2546,67 @@
         });
       }
 
+      // 학생/교사 공통 퀴즈 답안 처리
+      function handleQuizAnswer(isCorrect) {
+        // 이미 한 번 처리한 퀴즈라면 무시
+        if (GameState.hasAnsweredQuiz) {
+          return;
+        }
+        GameState.hasAnsweredQuiz = true;
+
+        const context = GameState.quizContext; // "scan" | "lab" | null
+        const quizId  = GameState.activeQuizId;
+
+        // 퀴즈창 닫기
+        closeQuizOverlay();
+
+        // ==============================
+        // 1) 스캔(레이더) 퀴즈인 경우
+        // ==============================
+        if (context === "scan") {
+          if (isCorrect) {
+            // 이 퀴즈를 이 학생이 맞췄다는 표시
+            if (quizId) {
+              GameState.quizSolvedCorrectly.add(quizId);
+            }
+            addLog("정답입니다! 잠시 동안 시야 밖 연구소 위치가 강조 표시됩니다.");
+            applyScanHighlightForCurrentPlayer();
+          } else {
+            addLog("아쉽지만 오답입니다. 개념을 다시 한 번 정리해 보세요.");
+          }
+
+          GameState.quizContext = null;
+          GameState.activeQuizId = null;
+          return;
+        }
+
+        // ==============================
+        // 2) 연구소(Lab) 퀴즈인 경우
+        // ==============================
+        if (context === "lab") {
+          // 멀티플레이 학생인 경우 → RTDB에 결과 기록
+          if (NetState.roomId && !NetState.isTeacher && NetState.labQuizRef) {
+            NetState.labQuizRef.child("result").set({
+              correct: isCorrect,
+              answeredBy: NetState.playerId || null,
+              answeredAt: Date.now()
+            });
+            // 실제 개발률/백신 효과는 교사 쪽 subscribeLabQuiz()가 처리
+          } else {
+            // 싱글플레이 또는 교사 혼자 → 즉시 로컬 적용
+            applyLabQuizResult(isCorrect);
+          }
+
+          GameState.quizContext = null;
+          GameState.activeQuizId = null;
+          return;
+        }
+
+        // 혹시 context가 없을 때 안전 처리
+        GameState.quizContext = null;
+        GameState.activeQuizId = null;
+      }
+      
       // 퀴즈 UI 초기화 (닫기 버튼 이벤트 연결)
       function initQuizUI() {
         if (UI.quizCloseBtn) {
@@ -3064,6 +3125,7 @@
     </script>
   </body>
   </html>
+
 
 
 
