@@ -200,7 +200,7 @@
         justify-content: center;
         font-size: 1rem;
         font-weight: 700;
-        color: #888888;
+        color: #000000;
         pointer-events: none;
       }
       .side-panel {
@@ -1879,17 +1879,16 @@
             !isScanHighlighted;
 
           if (isHiddenFog) {
-            // 타일 색을 회색으로
-            el.path.style.fill = "rgb(240, 240, 240)";
-            // '?' 표시 켜기
+            // 시야 밖: 타일 색은 그대로 두고 '?'만 표시
             if (fogEl) {
               fogEl.style.display = "flex";
             }
-            } else {
+          } else {
             // 시야 안이거나 스캔으로 드러난 타일 → '?' 숨기기
             if (fogEl) {
               fogEl.style.display = "none";
             }
+          }
             
             if (showLab) {
               el.path.style.fill = "rgba(200, 220, 255, 0.9)";
@@ -3427,6 +3426,7 @@
     </script>
   </body>
   </html>
+
 
 
 
