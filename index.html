@@ -1879,14 +1879,21 @@
             !isScanHighlighted;
 
           if (isHiddenFog) {
-            // 타일 색을 회색으로
-            el.path.style.fill = "rgb(240, 240, 240)";
+            // 감염/백신 색은 그대로 두고 회색 안개 필터만 적용
+            el.path.style.filter = "grayscale(0.6) brightness(0.85)";
+            el.path.style.fillOpacity = 0.85;
+
             // '?' 표시 켜기
             if (fogEl) {
               fogEl.style.display = "flex";
             }
-            } else {
-            // 시야 안이거나 스캔으로 드러난 타일 → '?' 숨기기
+
+          } else {
+            // 시야 안이거나 스캔으로 드러난 타일 → 안개 제거
+            el.path.style.filter = "none";
+            el.path.style.fillOpacity = 1;
+
+            // '?' 숨기기
             if (fogEl) {
               fogEl.style.display = "none";
             }
@@ -1897,6 +1904,7 @@
               if (isScanHighlighted) {
                 el.path.classList.add("scan-highlight");
               }
+
             } else {
               const totalPop = t.total || 0;
 
@@ -1929,6 +1937,7 @@
               el.path.style.fill = `rgb(${r}, ${g}, ${b})`;
             }
           }
+
 
           const pieceContainer = el.pieces;
           pieceContainer.innerHTML = "";
@@ -3427,6 +3436,7 @@
     </script>
   </body>
   </html>
+
 
 
 
