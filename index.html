@@ -513,6 +513,7 @@
         activeChestTiles: new Set(),
         openedChestCount: 0,   // "열린 상자 수" 대신 "백신 개발률(0~100)"로 사용
         vaccineActive: false,  // 백신 완성 여부
+        
 
         vaccineFeatureEnabled: true,
 
@@ -607,6 +608,9 @@
         lastLabQuizStartedAt: 0,
         // 교사 클라이언트가 마지막으로 처리한 연구소 퀴즈 결과 시각
         lastLabQuizResultAt: 0,
+        // 교사(서버)가 결정한 연구소 퀴즈 결과를
+        // 학생 쪽에서 중복 처리하지 않기 위한 타임스탬프
+        lastLabServerResultAt: 0,
 
         // ★ 2번째 게임(접종 모드)에서
         //    "몇 번째 연구소 방문에서 나온 퀴즈인지" 저장 (2, 3 등)
@@ -2243,14 +2247,24 @@
           );
         }
 
-        // 대상을 찾지 못했으면 초기화만
+        // 서버에 기록할 보상 타입
+        //  - "none"               : 보상 없음
+        //  - "devProgress"        : 1편 개발률 변화
+        //  - "vaccineSuccess"     : 2편, 백신 새로 획득
+        //  - "vaccineFail"        : 2편, 기록 해석은 성공했지만 백신은 못 얻음
+        //  - "vaccineAndUpgrade"  : 2편, 백신+업그레이드 동시에
+        //  - "upgradeOnly"        : 2편, 기존 백신에 업그레이드만
+        //  - "alreadyMax"         : 2편, 이미 최대 상태
+        let rewardType = "none";
+
+        // 대상을 찾지 못했으면 초기화만 하고 종료
         if (!player) {
           state.quizContext = null;
           state.labQuizPendingDelta = 0;
           state.labQuizPendingPlayerId = null;
           state.labQuizPendingTileIndex = null;
           state.labQuizPendingVaccinationStage = 0;
-          return;
+          return rewardType;
         }
 
         if (!player.visitedLabs) {
@@ -2273,6 +2287,8 @@
               Math.min(100, state.openedChestCount + delta)
             );
 
+            rewardType = "devProgress";
+
             addLog(
               `플레이어 ${player.id}가 연구소 문제를 맞혀 백신 개발률이 ${delta > 0 ? "+" + delta : delta}% 변화했습니다. (현재 ${state.openedChestCount}%)`
             );
@@ -2281,7 +2297,7 @@
               state.vaccineActive = true;
               addLog("백신이 완성되었습니다! 그런데.. 백신 접종은 어떻게 하죠?");
             }
-          } else {
+          } else if (!isCorrect) {
             addLog(
               `플레이어 ${player.id}가 연구소 문제를 맞히지 못해 백신 개발률은 변하지 않습니다.`
             );
@@ -2292,7 +2308,8 @@
           state.labQuizPendingPlayerId = null;
           state.labQuizPendingTileIndex = null;
           state.labQuizPendingVaccinationStage = 0;
-          return;
+
+          return rewardType;
         }
 
         // ──────────────────────────────
@@ -2304,46 +2321,63 @@
             addLog(
               `플레이어 ${player.id}가 연구소 문제를 맞히지 못해, 이번 연구소에서는 특별한 백신을 얻지 못했습니다.`
             );
+
             state.quizContext = null;
             state.labQuizPendingDelta = 0;
             state.labQuizPendingPlayerId = null;
             state.labQuizPendingTileIndex = null;
             state.labQuizPendingVaccinationStage = 0;
-            return;
+            return rewardType; // "none"
           }
 
           // 정답일 때만, 기존 2편 로직을 stage에 맞춰 적용
           if (stage === 2 && !player.hasVaccine) {
+            // 2번째 연구소: 50% 확률로 백신 획득 시도
             if (Math.random() < 0.5) {
               player.hasVaccine = true;
               player.enhancedVaccine = false;
+              rewardType = "vaccineSuccess";
+
               addLog(
                 `플레이어 ${player.id}가 두 번째 연구소 기록을 성공적으로 해석해, 오래된 백신 샘플을 손에 넣었습니다! 이제 이동할 때마다 주변 시민들에게 접종할 수 있습니다.`
               );
             } else {
+              rewardType = "vaccineFail";
+
               addLog(
                 `플레이어 ${player.id}가 두 번째 연구소 기록을 해석했지만, 결정적인 백신 정보는 찾지 못했습니다.`
               );
             }
           } else if (stage === 3) {
+            // 3번째 연구소:
+            //  - 아직 백신이 없다면 100%로 획득 + 업그레이드
+            //  - 이미 백신이 있다면 범위/이동력 업그레이드만 부여
             if (!player.hasVaccine) {
               player.hasVaccine = true;
               player.enhancedVaccine = true;
+              rewardType = "vaccineAndUpgrade";
+
               addLog(
                 `플레이어 ${player.id}가 세 번째 연구소 기록을 해석해, 백신의 마지막 조각을 완성했습니다! 이제 더 넓은 범위에 접종하고, 두 칸까지 이동할 수 있습니다.`
               );
             } else if (!player.enhancedVaccine) {
               player.enhancedVaccine = true;
+              rewardType = "upgradeOnly";
+
               addLog(
                 `플레이어 ${player.id}가 세 번째 연구소 기록을 해석해, 기존 백신 시스템을 업그레이드했습니다! 이제 주변 1칸 전체에 접종하고, 두 칸까지 이동할 수 있습니다.`
               );
             } else {
+              rewardType = "alreadyMax";
+
               addLog(
                 `플레이어 ${player.id}는 이미 강화된 백신을 보유하고 있어, 이번 연구소에서는 추가 업그레이드가 필요하지 않았습니다.`
               );
             }
           } else {
             // 혹시 stage 정보가 없으면, 최소한의 안내만
+            rewardType = "none";
+
             addLog(
               `플레이어 ${player.id}가 연구소 기록 해석에 성공했습니다. (추가 효과는 설정되지 않았습니다.)`
             );
@@ -2354,7 +2388,7 @@
           state.labQuizPendingPlayerId = null;
           state.labQuizPendingTileIndex = null;
           state.labQuizPendingVaccinationStage = 0;
-          return;
+          return rewardType;
         }
 
         // 혹시 모를 기타 상황
@@ -2363,6 +2397,7 @@
         state.labQuizPendingPlayerId = null;
         state.labQuizPendingTileIndex = null;
         state.labQuizPendingVaccinationStage = 0;
+        return rewardType;
       }
 
 
@@ -2472,41 +2507,101 @@
           if (!NetState.isTeacher) {
             const myId = NetState.playerId;
             if (!myId) return;
-            if (data.targetPlayerId !== myId) return;
 
-            const startedAt = data.startedAt || 0;
-            if (startedAt <= GameState.lastLabQuizStartedAt) {
+            // 1) 새 퀴즈 시작 감지 (기존 코드 유지)
+            if (data.targetPlayerId === myId && data.quizId) {
+              const startedAt = data.startedAt || 0;
+              if (startedAt > GameState.lastLabQuizStartedAt) {
+                GameState.lastLabQuizStartedAt = startedAt;
+
+                const bank = GameState.quizBank || [];
+                let quiz = bank.find(q => q.id === data.quizId);
+                if (!quiz && bank.length > 0) {
+                  quiz = bank[0];
+                }
+                if (quiz) {
+                  GameState.activeQuizId = quiz.id;
+                  GameState.hasAnsweredQuiz = false;
+                  GameState.quizContext = "lab";
+
+                  GameState.labQuizPendingDelta = data.delta || 0;
+                  GameState.labQuizPendingVaccinationStage = data.stage || 0;
+                  GameState.labQuizPendingPlayerId = myId;
+
+                  const localPlayer = GameState.entities.find(
+                    e => e.type === "player" && e.id === myId
+                  );
+                  GameState.labQuizPendingTileIndex = localPlayer ? localPlayer.tileIndex : null;
+
+                  openQuizOverlay(quiz);
+                }
+              }
+            }
+
+            // 2) 교사(서버)가 결정한 최종 결과 감지 → 학생 로그로 출력
+            const res = data.result;
+            if (!res) return;
+
+            const processedAt = res.processedAt || 0;
+            if (processedAt <= (GameState.lastLabServerResultAt || 0)) {
               return;
             }
-            GameState.lastLabQuizStartedAt = startedAt;
+            GameState.lastLabServerResultAt = processedAt;
 
-            const bank = GameState.quizBank || [];
-            let quiz = bank.find(q => q.id === data.quizId);
-            if (!quiz && bank.length > 0) {
-              quiz = bank[0];
+            if (res.playerId !== myId) {
+              return; // 다른 학생 결과면 무시
             }
-            if (!quiz) return;
 
-            GameState.activeQuizId = quiz.id;
-            GameState.hasAnsweredQuiz = false;
-            GameState.quizContext = "lab";
+            const reward = res.reward || "none";
+            const mode = res.mode || GameState.gameMode;
+            const stage = res.stage || 0;
+            const correct = !!res.correct;
 
-            // 1편(DEVELOPMENT)용 delta (없으면 0)
-            GameState.labQuizPendingDelta = data.delta || 0;
-            // 2편(VACCINATION)용 stage (2,3 등)
-            GameState.labQuizPendingVaccinationStage = data.stage || 0;
+            if (mode === GameModes.VACCINATION && stage === 2) {
+              // 2번째 연구소 결과
+              if (!correct) {
+                // 이미 handleQuizAnswer 에서 "암호가 틀린 탓일까요..." 로그를 찍으므로
+                // 여기서는 굳이 추가 로그가 없어도 됨. 필요하면 한 줄 더 찍어도 됨.
+                return;
+              }
 
-            GameState.labQuizPendingPlayerId = myId;
-
-            const localPlayer = GameState.entities.find(
-              e => e.type === "player" && e.id === myId
-            );
-            GameState.labQuizPendingTileIndex = localPlayer ? localPlayer.tileIndex : null;
-
-            openQuizOverlay(quiz);
+              if (reward === "vaccineSuccess") {
+                addLog(
+                  "서버 판정: 이 연구소 기록에서 실제로 사용할 수 있는 백신 샘플을 확보했습니다. 이제 이동할 때마다 주변 시민에게 접종할 수 있습니다."
+                );
+              } else if (reward === "vaccineFail") {
+                addLog(
+                  "서버 판정: 기록은 해석했지만, 실제로 쓸 수 있는 백신 샘플은 찾지 못했습니다."
+                );
+              }
+            } else if (mode === GameModes.VACCINATION && stage === 3) {
+              // 3번째 연구소 결과 (원하면 여기서도 세분화 가능)
+              if (!correct) {
+                return;
+              }
+              if (reward === "vaccineAndUpgrade") {
+                addLog(
+                  "서버 판정: 새로운 백신과 함께, 바로 업그레이드된 시스템도 완성되었습니다!"
+                );
+              } else if (reward === "upgradeOnly") {
+                addLog(
+                  "서버 판정: 기존에 갖고 있던 백신 시스템이 한 단계 업그레이드되었습니다."
+                );
+              } else if (reward === "alreadyMax") {
+                addLog(
+                  "서버 판정: 이미 최대 성능의 백신 시스템을 보유하고 있어 이번에는 추가 변화가 없습니다."
+                );
+              }
+            } else if (mode === GameModes.DEVELOPMENT) {
+              // 1편 연구소 퀴즈 결과도 나중에 학생에게 따로 알려주고 싶으면 여기서 처리
+              if (correct && reward === "devProgress") {
+                addLog("서버 판정: 이 연구소 연구 결과가 실제 백신 개발률에 반영되었습니다.");
+              } else if (!correct) {
+                // 필요하면 한 줄 추가
+              }
+            }
             return;
           }
-
           // ── 교사 클라이언트: 해당 연구소 퀴즈에 대한 결과가 올라왔는지 확인 ──
           const result = data.result;
           if (!result) return;
@@ -2531,7 +2626,7 @@
           }
 
           // 실제 효과 적용 (1편: 개발률, 2편: 백신 획득/업그레이드)
-          applyLabQuizResult(!!result.correct);
+          const rewardType = applyLabQuizResult(!!result.correct);
 
           // 1편일 때는 개발률/백신완성 상태를 서버 stateRef에 반영
           if (NetState.stateRef && GameState.gameMode === GameModes.DEVELOPMENT) {
@@ -2541,11 +2636,20 @@
             });
           }
 
-          // 다음 퀴즈를 위해 labQuiz 노드 비우기
-          NetState.labQuizRef.set(null);
-        });
-      }
+          // ▶ 학생에게도 "최종 결과"를 알려주기 위해
+          //    result 노드에 서버 결정 결과를 덧붙인다.
+          if (NetState.labQuizRef) {
+            NetState.labQuizRef.child("result").update({
+              reward: rewardType,              // 위에서 계산한 보상 타입
+              mode: GameState.gameMode,        // DEVELOPMENT or VACCINATION
+              stage: data.stage || 0,          // 2, 3 등
+              playerId: data.targetPlayerId,   // 누구 결과인지
+              processedAt: Date.now()          // 서버 결정 타임스탬프
+            });
+          }
 
+          // ※ labQuizRef를 바로 set(null)로 비우지 않고,
+          //    다음 퀴즈에서 set({quizId, ...})로 덮어쓰는 방식 사용
       // 학생/교사 공통 퀴즈 답안 처리
       function handleQuizAnswer(isCorrect) {
         // 이미 한 번 처리한 퀴즈라면 무시
@@ -3190,6 +3294,7 @@
     </script>
   </body>
   </html>
+
 
 
 
