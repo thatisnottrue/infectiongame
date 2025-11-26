@@ -3068,41 +3068,75 @@
       async function nextTurn() {
         const state = GameState;
 
+        // 학생은 직접 턴 진행 불가
         if (NetState.roomId && !NetState.isTeacher) {
           alert("이 방에서는 교사만 턴을 진행할 수 있습니다.");
           return;
         }
 
-        // 새 턴 시작: 턴 수 증가 + 이번 턴에 이동한 플레이어 집합 초기화
+        // 턴 증가 (회복 처리 등에서 사용)
         state.currentTurn++;
-        state.playersMovedThisTurn = new Set();
+
+        // 자동 이동 방지용 Set이 없다면 생성
+        if (!state.playersMovedThisTurn) {
+          state.playersMovedThisTurn = new Set();
+        }
 
         // 멀티플레이(교사)일 때: 학생들이 제출한 이동 먼저 적용
         if (NetState.roomId && NetState.isTeacher && NetState.movesRef) {
           const movesSnap = await NetState.movesRef.get();
-          const movesVal = movesSnap.val() || {};
+          const moves = movesSnap.val() || {};
 
           const players = state.entities.filter(e => e.type === "player");
           for (const p of players) {
-            const moveInfo = movesVal[p.id];
-            if (!moveInfo) continue;
+            const m = moves[p.id];
+            if (!m) continue;
 
-            const dest = moveInfo.destTileIndex;
+            // onTileClick에서 { region: tileIndex }로 저장하므로 여기도 region 사용
+            const dest = m.region;
             if (typeof dest !== "number") continue;
 
-            const reachable = computeReachableTilesForPlayer(p);
-            if (!reachable.has(dest)) continue;
+            const currentIndex = p.tileIndex;
 
-            p.tileIndex = dest;
-            state.playersMovedThisTurn.add(p.id);
+            // 이동 가능한 최대 칸 수 판단
+            let maxStep = 1;
+            if (
+              state.gameMode === GameModes.VACCINATION &&
+              p.enhancedVaccine
+            ) {
+              maxStep = 2;
+            }
+
+            // 도달 가능한 타일 집합 계산
+            const reachable = new Set();
+            const n1 = getNeighborIndices(currentIndex);
+            n1.forEach(n => reachable.add(n));
+
+            if (maxStep >= 2) {
+              n1.forEach(n => {
+                getNeighborIndices(n).forEach(nn => {
+                  if (nn !== currentIndex) reachable.add(nn);
+                });
+              });
+            }
+
+            // 실제로 도달 가능한 타일만 적용
+            if (reachable.has(dest)) {
+              p.tileIndex = dest;
+              addLog(`(적용) ${p.id} : #${currentIndex} → #${dest}`);
+              // 이 턴에 이미 이동한 플레이어로 표시 → 자동 이동에서 제외
+              state.playersMovedThisTurn.add(p.id);
+            }
           }
 
+          // 이번 턴 이동 의사는 모두 처리했으니 비워 줌
           await NetState.movesRef.set(null);
         }
 
         // 시민 이동 + 자동 이동(AI 플레이어만)
         stepMovement();
-        stepPlayerAutoMovement();
+        stepPlayerAutoMovement();   // 여기서 isHuman / playersMovedThisTurn를 보고 사람 말은 건드리지 않음
+        applyLabEffects();
 
         // 2편(접종 모드)일 경우 접종 처리
         if (state.gameMode === GameModes.VACCINATION) {
@@ -3124,6 +3158,9 @@
         updateSelectedPlayerInfo();
         addLog(`새 감염자 ${newInf}명`);
 
+        // 이 턴에서의 "이미 이동한 플레이어" 정보는 이제 필요 없으니 다음 턴용으로 초기화
+        state.playersMovedThisTurn = new Set();
+
         // 멀티플레이 동기화(교사 → RTDB)
         if (NetState.roomId && NetState.isTeacher && NetState.stateRef && NetState.playersRef) {
           const inf = computeInfectedCount();
@@ -3141,12 +3178,16 @@
           });
 
           const players = state.entities.filter(e => e.type === "player");
+          const playerUpdates = {};
+
           for (const p of players) {
-            await NetState.playersRef.child(p.id).update({
+            playerUpdates[p.id] = {
               tileIndex: p.tileIndex,
               infected: p.infected
-            });
+            };
           }
+
+          await NetState.playersRef.update(playerUpdates);
         }
       }
 
@@ -3428,6 +3469,7 @@
     </script>
   </body>
   </html>
+
 
 
 
