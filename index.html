@@ -192,17 +192,6 @@
         box-shadow: 0 0 0 2px #ff9800; /* 주황색 테두리 */
         border-radius: 50%;
       }
-      .lab-icon {
-        position: absolute;
-        width: 18px;
-        height: 18px;
-        top: -2px;
-        right: -2px;
-        background-image: url("./assets/Lab.svg");
-        background-size: contain;
-        background-repeat: no-repeat;
-        pointer-events: none;
-      }
 
       .side-panel {
         display: flex;
@@ -769,12 +758,12 @@
               overlay.dataset.tileIndex = i;
 
               overlay.innerHTML = `
-                <div class="lab-icon" style="display:none;"></div>
                 <div class="tile-bottom">
                   <div><span class="label">인구:</span> <span class="pop">0</span></div>
                   <div class="tile-pieces"></div>
                 </div>
               `;
+
               overlay.addEventListener("click", (e) => {
                 e.stopPropagation();
                 onTileClick(i);
@@ -790,8 +779,7 @@
                 path,
                 overlay,
                 pop: overlay.querySelector(".pop"),
-                pieces: overlay.querySelector(".tile-pieces"),
-                labIcon: overlay.querySelector(".lab-icon")
+                pieces: overlay.querySelector(".tile-pieces")
               };
             }
 
@@ -1838,8 +1826,6 @@
           const el = state.tileElements[i];
           if (!el) continue;
 
-          const labIconEl = el.labIcon;
-
           el.pop.textContent = t.total;
 
           const isLabTile = !!t.hasChest;
@@ -1860,10 +1846,6 @@
           // 스캔 하이라이트 타일은 시야 밖이어도 강제로 보이게
           if (isScanHighlighted) {
             showLab = true;
-          }
-
-          if (labIconEl) {
-            labIconEl.style.display = showLab ? "block" : "none";
           }
 
           // stroke 초기화
@@ -3409,48 +3391,6 @@
     </script>
   </body>
   </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
