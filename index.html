@@ -3502,26 +3502,13 @@
 
         // 스캔 버튼 클릭 시 퀴즈-레이더 발동 (교사 전용)
         UI.scanBtn.addEventListener("click", triggerScanForTeacher);
-
-        UI.vaccineToggle.addEventListener("change", () => {
-          GameState.vaccineFeatureEnabled = UI.vaccineToggle.checked;
-          if (!GameState.vaccineFeatureEnabled) {
-            addLog(
-              "백신/연구소 시스템이 비활성화되었습니다."
-            );
-          } else {
-            addLog(
-              "백신/연구소 시스템이 활성화되었습니다. 연구소를 찾아 백신 개발을 진행하세요."
-            );
-          }
-          renderAll();
-        });
       }
 
       init();
     </script>
   </body>
   </html>
+
 
 
 
