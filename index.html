@@ -1403,13 +1403,21 @@
 
             const delta = e.infected ? -loss : gain;
 
-            // 멀티플레이가 아닐 때는 모두 사람이 조종하는 말로 보고 퀴즈를 출제한다.
-            // 멀티플레이일 때만, AI 말에 한해 퀴즈 없이 즉시 보상 처리.
-            const isMultiplay = NetState.roomId && NetState.playersRef;
-            const treatAsHuman = !isMultiplay || e.isHuman;
+            // 멀티플레이 여부 / 교사 화면 여부 / 사람 조종 말 여부를 좀 더 명시적으로 판단
+            const isMultiplay = !!(NetState.roomId && NetState.playersRef);
+            const isTeacherSide = !!NetState.isTeacher;
+
+            // "사람이 조종하는 말"이라고 판단할 기준:
+            //  - 싱글플레이면 전부 사람 취급
+            //  - 멀티플레이면 e.isHuman 플래그가 true
+            //  - (선생님이 자기 말 하나 들고 테스트하는 경우를 위해) 교사 쪽에서 자기 말이면 사람 취급
+            const isHumanControlled =
+              !isMultiplay ||
+              e.isHuman ||
+              (isMultiplay && isTeacherSide && e.id === NetState.playerId);
 
             // ★ AI 말은 퀴즈 없이 즉시 보상 처리 (멀티플레이 방에서만)
-            if (!treatAsHuman) {
+            if (!isHumanControlled) {
               state.openedChestCount = Math.max(
                 0,
                 Math.min(100, state.openedChestCount + delta)
@@ -1426,7 +1434,7 @@
             }
 
             // ① 멀티플레이 + 교사: 해당 플레이어(학생)에게만 퀴즈 전송
-            if (NetState.roomId && NetState.isTeacher && NetState.labQuizRef) {
+            if (isMultiplay && isTeacherSide && NetState.labQuizRef) {
               const bank = state.quizBank || [];
               if (!bank.length) {
                 // 퀴즈가 아예 없으면 예전 방식대로 바로 적용
@@ -1511,20 +1519,24 @@
 
             const stage = visitedCount; // 2 또는 3
 
-            // 멀티플레이가 아닐 때는 모두 사람이 조종하는 말로 보고 퀴즈를 출제한다.
-            // 멀티플레이일 때만, AI 말에 한해 퀴즈 없이 즉시 보상 처리.
-            const isMultiplay = NetState.roomId && NetState.playersRef;
-            const treatAsHuman = !isMultiplay || e.isHuman;
+            // 멀티플레이 여부 / 교사 화면 여부 / 사람 조종 말 여부를 좀 더 명시적으로 판단
+            const isMultiplay = !!(NetState.roomId && NetState.playersRef);
+            const isTeacherSide = !!NetState.isTeacher;
+
+            const isHumanControlled =
+              !isMultiplay ||
+              e.isHuman ||
+              (isMultiplay && isTeacherSide && e.id === NetState.playerId);
 
             // ★ AI 말은 퀴즈 없이 즉시 보상 처리 (멀티플레이 방에서만)
-            if (!treatAsHuman) {
+            if (!isHumanControlled) {
               applyVaccinationRewardImmediate(e, stage);
               continue;
             }
 
             // 2번째, 3번째 연구소: 퀴즈를 맞혀야 백신/업그레이드 적용
             // ① 멀티플레이 + 교사: 해당 플레이어(학생)에게만 퀴즈 전송
-            if (NetState.roomId && NetState.isTeacher && NetState.labQuizRef) {
+            if (isMultiplay && isTeacherSide && NetState.labQuizRef) {
               const bank = state.quizBank || [];
               if (!bank.length) {
                 // 퀴즈가 없으면 예전 로직 그대로 즉시 처리
@@ -3509,6 +3521,7 @@
     </script>
   </body>
   </html>
+
 
 
 
