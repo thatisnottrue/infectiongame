@@ -1382,47 +1382,52 @@
         //    정답을 맞혀야 백신 개발률이 변한다.
         // ──────────────────────────────
         if (state.gameMode === GameModes.DEVELOPMENT) {
-        // 이미 백신이 완성되었다면 더 이상 처리하지 않음
-        if (state.vaccineActive) return;
+          // 이미 백신이 완성되었다면 더 이상 처리하지 않음
+          if (state.vaccineActive) return;
 
-        const gain = GameConfig.VACCINE_PROGRESS_GAIN || 5;
-        const loss = GameConfig.VACCINE_PROGRESS_LOSS || 25;
+          const gain = GameConfig.VACCINE_PROGRESS_GAIN || 5;
+          const loss = GameConfig.VACCINE_PROGRESS_LOSS || 25;
 
-        // 연구소 타일 위에 있는 플레이어 중
-        // 아직 그 연구소를 방문 처리하지 않은 첫 번째 플레이어를 찾는다.
-        for (const e of state.entities) {
-          if (e.type !== "player") continue;
-          if (!state.activeChestTiles.has(e.tileIndex)) continue;
+          // 연구소 타일 위에 있는 플레이어 중
+          // 아직 그 연구소를 방문 처리하지 않은 첫 번째 플레이어를 찾는다.
+          for (const e of state.entities) {
+            if (e.type !== "player") continue;
+            if (!state.activeChestTiles.has(e.tileIndex)) continue;
 
-          if (!e.visitedLabs) {
-            e.visitedLabs = new Set();
-          }
-          if (e.visitedLabs.has(e.tileIndex)) {
-            continue;
-          }
-
-          const delta = e.infected ? -loss : gain;
-
-          // ★ AI 말은 퀴즈 없이 즉시 보상 처리 (멀티플레이 방에서만)
-          if (NetState.roomId && !e.isHuman) {
-            state.openedChestCount = Math.max(
-              0,
-              Math.min(100, state.openedChestCount + delta)
-            );
-            e.visitedLabs.add(e.tileIndex);
-            addLog(
-              `플레이어 ${e.id}가 연구소를 분석해 백신 개발률이 ${delta > 0 ? "+" + delta : delta}% 변화했습니다. (현재 ${state.openedChestCount}%)`
-            );
-            if (state.openedChestCount >= 100 && !state.vaccineActive) {
-              state.vaccineActive = true;
-              addLog("백신이 완성되었습니다! 그런데.. 백신 접종은 어떻게 하죠?");
+            if (!e.visitedLabs) {
+              e.visitedLabs = new Set();
             }
-            continue; // 이 플레이어 처리는 끝
-          }
+            if (e.visitedLabs.has(e.tileIndex)) {
+              continue;
+            }
 
-          // ① 멀티플레이 + 교사: 해당 플레이어(학생)에게만 퀴즈 전송
-          if (NetState.roomId && NetState.isTeacher && NetState.labQuizRef) {
-            const bank = state.quizBank || [];
+            const delta = e.infected ? -loss : gain;
+
+            // 멀티플레이가 아닐 때는 모두 사람이 조종하는 말로 보고 퀴즈를 출제한다.
+            // 멀티플레이일 때만, AI 말에 한해 퀴즈 없이 즉시 보상 처리.
+            const isMultiplay = NetState.roomId && NetState.playersRef;
+            const treatAsHuman = !isMultiplay || e.isHuman;
+
+            // ★ AI 말은 퀴즈 없이 즉시 보상 처리 (멀티플레이 방에서만)
+            if (!treatAsHuman) {
+              state.openedChestCount = Math.max(
+                0,
+                Math.min(100, state.openedChestCount + delta)
+              );
+              e.visitedLabs.add(e.tileIndex);
+              addLog(
+                `플레이어 ${e.id}가 연구소를 분석해 백신 개발률이 ${delta > 0 ? "+" + delta : delta}% 변화했습니다. (현재 ${state.openedChestCount}%)`
+              );
+              if (state.openedChestCount >= 100 && !state.vaccineActive) {
+                state.vaccineActive = true;
+                addLog("백신이 완성되었습니다! 그런데.. 백신 접종은 어떻게 하죠?");
+              }
+              continue; // 이 플레이어 처리는 끝
+            }
+
+            // ① 멀티플레이 + 교사: 해당 플레이어(학생)에게만 퀴즈 전송
+            if (NetState.roomId && NetState.isTeacher && NetState.labQuizRef) {
+              const bank = state.quizBank || [];
               if (!bank.length) {
                 // 퀴즈가 아예 없으면 예전 방식대로 바로 적용
                 state.openedChestCount = Math.max(
@@ -1506,8 +1511,13 @@
 
             const stage = visitedCount; // 2 또는 3
 
+            // 멀티플레이가 아닐 때는 모두 사람이 조종하는 말로 보고 퀴즈를 출제한다.
+            // 멀티플레이일 때만, AI 말에 한해 퀴즈 없이 즉시 보상 처리.
+            const isMultiplay = NetState.roomId && NetState.playersRef;
+            const treatAsHuman = !isMultiplay || e.isHuman;
+
             // ★ AI 말은 퀴즈 없이 즉시 보상 처리 (멀티플레이 방에서만)
-            if (NetState.roomId && !e.isHuman) {
+            if (!treatAsHuman) {
               applyVaccinationRewardImmediate(e, stage);
               continue;
             }
@@ -1560,6 +1570,7 @@
           return;
         }
       }
+
 
       function stepInfection() {
         const {
@@ -3498,6 +3509,7 @@
     </script>
   </body>
   </html>
+
 
 
 
