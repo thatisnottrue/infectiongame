@@ -3177,6 +3177,7 @@
             // 실제로 도달 가능한 타일만 적용
             if (reachable.has(dest)) {
               p.tileIndex = dest;
+              p.isHuman = true;
               addLog(`(적용) ${p.id} : #${currentIndex} → #${dest}`);
               // 이 턴에 이미 이동한 플레이어로 표시 → 자동 이동에서 제외
               state.playersMovedThisTurn.add(p.id);
@@ -3508,6 +3509,7 @@
     </script>
   </body>
   </html>
+
 
 
 
