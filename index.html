@@ -1415,6 +1415,7 @@
               !isMultiplay ||
               e.isHuman ||
               (isMultiplay && isTeacherSide && e.id === NetState.playerId);
+              (NetState.playersRef && e.id !== NetState.playerId); // ★ 멀티플레이라면 일단 사람이라고 가정하고 퀴즈 보내기
 
             // ★ AI 말은 퀴즈 없이 즉시 보상 처리 (멀티플레이 방에서만)
             if (!isHumanControlled) {
@@ -3521,6 +3522,7 @@
     </script>
   </body>
   </html>
+
 
 
 
