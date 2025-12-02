@@ -448,6 +448,7 @@
 
       <div id="guideOverlay" class="quiz-overlay" style="display:none; z-index: 3000;">
       <div class="quiz-backdrop"></div>
+        
       
       <div class="guide-box" style="position: relative; z-index: 3001; max-width: 900px; width: 90%;">
         <div id="guideSvgContainer" style="
@@ -461,6 +462,23 @@
           padding: 10px;
           min-height: 300px;">
           <span style="color:gray;">가이드 이미지를 로딩 중입니다...</span>
+        </div>
+      </div>
+        
+      <div id="guideOverlay2" class="quiz-overlay" style="display:none; z-index: 3000;">
+      <div class="quiz-backdrop"></div>
+      <div class="guide-box" style="position: relative; z-index: 3001; max-width: 900px; width: 90%;">
+        <div id="guideSvgContainer2" style="
+          background: var(--panel-bg); 
+          border-radius: 16px; 
+          overflow: hidden; 
+          display: flex; 
+          justify-content: center; 
+          align-items: center;
+          box-shadow: var(--shadow-soft);
+          padding: 10px;
+          min-height: 300px;">
+          <span style="color:gray;">2부 가이드 로딩 중...</span>
         </div>
       </div>
     </div>
@@ -718,7 +736,9 @@
         quizCloseBtn: document.getElementById("quizCloseBtn"),
         guideOverlay: document.getElementById("guideOverlay"),
         guideSvgContainer: document.getElementById("guideSvgContainer"),
-        guideCloseBtn: document.getElementById("guideCloseBtn")
+        guideCloseBtn: document.getElementById("guideCloseBtn"),
+        guideOverlay2: document.getElementById("guideOverlay2"),
+        guideSvgContainer2: document.getElementById("guideSvgContainer2")
       };
       // ★★★ UI 객체 끝 ★★★
 
@@ -3106,6 +3126,8 @@
           addLog("소문에 의하면 지난 시대의 과학자들이 백신을 만들었지만");
           addLog("너무 늦어버린 탓에 사용도 못하고 죽음을 맞이했다네요.");
           addLog("연구소에서 백신을 얻을 수 있을지도 모르겠어요.");
+          // ★★★ (2부 전환 시 팝업) ★★★
+          openGuide2Overlay();
 
           // ★ 교사라면 DB에도 gameMode 갱신
           if (NetState.roomId && NetState.isTeacher && NetState.stateRef) {
@@ -3438,6 +3460,7 @@
               addLog("소문에 의하면 지난 시대의 과학자들이 백신을 만들었지만");
               addLog("너무 늦어버린 탓에 사용도 못하고 죽음을 맞이했다네요.");
               addLog("연구소에서 백신을 얻을 수 있을지도 모르겠어요.");
+              openGuide2Overlay();
             } else if (prevMode === GameModes.VACCINATION && GameState.gameMode === GameModes.DEVELOPMENT) {
               addLog("=== 시간축이 거꾸로 흐르며, 다시 첫 번째 게임으로 돌아갑니다. ===");
               addLog("도시는 아직 백신이 완성되지 않은 초기 감염 확산 단계입니다.");
@@ -3546,6 +3569,55 @@
         if(backdrop) backdrop.addEventListener("click", closeGuideOverlay);
       }
 
+      // =========================
+      // ★ 2부 게임 가이드(Guide2) 기능
+      // =========================
+      function loadGuide2SVG() {
+        if (UI.guideSvgContainer2.querySelector('svg')) return Promise.resolve();
+
+        return fetch("./assets/guide2.svg")
+          .then(res => res.text())
+          .then(svgText => {
+            UI.guideSvgContainer2.innerHTML = svgText;
+            const svg = UI.guideSvgContainer2.querySelector("svg");
+            if (svg) {
+              svg.style.width = "100%";
+              svg.style.height = "auto";
+              svg.style.display = "block";
+              
+              // ★ SVG 내부의 'guideCloseBtn2' 찾기
+              const internalCloseBtn = svg.querySelector("#guideCloseBtn2");
+              
+              if (internalCloseBtn) {
+                internalCloseBtn.style.cursor = "pointer";
+                internalCloseBtn.style.pointerEvents = "all"; // 클릭 잘 되게
+                
+                internalCloseBtn.addEventListener("click", (e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  closeGuide2Overlay();
+                });
+                console.log("Guide2 닫기 버튼 연결 성공!");
+              }
+            }
+          })
+          .catch(err => console.error("Guide2 로드 실패:", err));
+      }
+
+      function openGuide2Overlay() {
+        if (!UI.guideOverlay2) return;
+        loadGuide2SVG().then(() => {
+          UI.guideOverlay2.classList.add("active");
+          UI.guideOverlay2.style.display = "flex";
+        });
+      }
+
+      function closeGuide2Overlay() {
+        if (!UI.guideOverlay2) return;
+        UI.guideOverlay2.classList.remove("active");
+        UI.guideOverlay2.style.display = "none";
+      }
+
       // -----------------------------------------------------------
       
       async function init() {
@@ -3596,6 +3668,7 @@
     </script>
   </body>
   </html>
+
 
 
 
