@@ -3617,10 +3617,20 @@
       }
 
       function openGuide2Overlay() {
-        if (!UI.guideOverlay2) return;
-        UI.guideOverlay2.classList.add("active");
-        UI.guideOverlay2.style.display = "flex";
+        // UI 변수 대신 직접 찾기 (안전장치)
+        const overlay = document.getElementById("guideOverlay2");
+        if (!overlay) {
+            console.error("오류: HTML에서 id='guideOverlay2'를 찾을 수 없습니다.");
+            return;
+        }
+        
+        console.log("2부 가이드 창 열기 시도..."); // F12 콘솔 확인용 로그
+        
+        overlay.classList.add("active");
+        overlay.style.display = "flex";
+        
         loadGuide2SVG().then(() => {
+            console.log("2부 가이드 SVG 로드 완료");
         });
       }
 
@@ -3680,6 +3690,7 @@
     </script>
   </body>
   </html>
+
 
 
 
