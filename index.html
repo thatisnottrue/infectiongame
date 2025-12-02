@@ -3576,7 +3576,10 @@
         if (UI.guideSvgContainer2.querySelector('svg')) return Promise.resolve();
 
         return fetch("./assets/guide2.svg")
-          .then(res => res.text())
+          .then(res => {
+            if (!res.ok) throw new Error("파일을 찾을 수 없습니다.");
+            return res.text();
+          })
           .then(svgText => {
             UI.guideSvgContainer2.innerHTML = svgText;
             const svg = UI.guideSvgContainer2.querySelector("svg");
@@ -3601,14 +3604,23 @@
               }
             }
           })
-          .catch(err => console.error("Guide2 로드 실패:", err));
+          .catch(err => {
+            console.error("Guide2 로드 실패:", err);
+            // 로드 실패 시 사용자에게 알림 텍스트 표시
+            UI.guideSvgContainer2.innerHTML = `<div style="padding:20px; color:red;">
+              가이드 이미지를 불러오지 못했습니다.<br>
+              (./assets/guide2.svg 파일이 있는지 확인해주세요)
+              <br><br>
+              <button class="btn" onclick="document.getElementById('guideOverlay2').style.display='none'">닫기</button>
+            </div>`;
+          });
       }
 
       function openGuide2Overlay() {
         if (!UI.guideOverlay2) return;
+        UI.guideOverlay2.classList.add("active");
+        UI.guideOverlay2.style.display = "flex";
         loadGuide2SVG().then(() => {
-          UI.guideOverlay2.classList.add("active");
-          UI.guideOverlay2.style.display = "flex";
         });
       }
 
@@ -3668,6 +3680,7 @@
     </script>
   </body>
   </html>
+
 
 
 
