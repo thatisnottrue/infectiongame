@@ -3570,7 +3570,7 @@
       }
 
       // =========================
-      // ★ 2부 게임 가이드(Guide2) 기능
+      // ★ 2부 게임 가이드(Guide2) 기능 - ID 충돌 방지 버전
       // =========================
       function loadGuide2SVG() {
         if (UI.guideSvgContainer2.querySelector('svg')) return Promise.resolve();
@@ -3581,19 +3581,29 @@
             return res.text();
           })
           .then(svgText => {
-            UI.guideSvgContainer2.innerHTML = svgText;
+            // [중요] ID 충돌 방지 로직
+            // guide2.svg 내부의 모든 id="..." 와 url(#...)에 "g2_"를 붙여서 고유하게 만듦
+            // 예: id="paint0" -> id="g2_paint0"
+            const uniqueSvgText = svgText
+              .replace(/id="/g, 'id="g2_')
+              .replace(/url\(#/g, 'url(#g2_')
+              .replace(/xlink:href="#/g, 'xlink:href="#g2_'); // 구형 브라우저 호환
+
+            UI.guideSvgContainer2.innerHTML = uniqueSvgText;
+            
             const svg = UI.guideSvgContainer2.querySelector("svg");
             if (svg) {
               svg.style.width = "100%";
               svg.style.height = "auto";
               svg.style.display = "block";
               
-              // ★ SVG 내부의 'guideCloseBtn2' 찾기
-              const internalCloseBtn = svg.querySelector("#guideCloseBtn2");
+              // ★ ID가 바뀌었으므로 버튼 찾는 ID도 "g2_"를 붙여서 찾아야 함
+              // (피그마에서 guideCloseBtn2로 저장했으니 -> g2_guideCloseBtn2 가 됨)
+              const internalCloseBtn = svg.querySelector("#g2_guideCloseBtn2");
               
               if (internalCloseBtn) {
                 internalCloseBtn.style.cursor = "pointer";
-                internalCloseBtn.style.pointerEvents = "all"; // 클릭 잘 되게
+                internalCloseBtn.style.pointerEvents = "all";
                 
                 internalCloseBtn.addEventListener("click", (e) => {
                   e.stopPropagation();
@@ -3601,18 +3611,24 @@
                   closeGuide2Overlay();
                 });
                 console.log("Guide2 닫기 버튼 연결 성공!");
+              } else {
+                 // 혹시 변환 과정에서 ID를 못 찾을 경우를 대비해 원본 ID로도 한 번 더 시도
+                 const fallbackBtn = svg.querySelector("#guideCloseBtn2");
+                 if(fallbackBtn) {
+                    fallbackBtn.style.cursor = "pointer";
+                    fallbackBtn.style.pointerEvents = "all";
+                    fallbackBtn.addEventListener("click", (e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      closeGuide2Overlay();
+                    });
+                 }
               }
             }
           })
           .catch(err => {
             console.error("Guide2 로드 실패:", err);
-            // 로드 실패 시 사용자에게 알림 텍스트 표시
-            UI.guideSvgContainer2.innerHTML = `<div style="padding:20px; color:red;">
-              가이드 이미지를 불러오지 못했습니다.<br>
-              (./assets/guide2.svg 파일이 있는지 확인해주세요)
-              <br><br>
-              <button class="btn" onclick="document.getElementById('guideOverlay2').style.display='none'">닫기</button>
-            </div>`;
+            // 에러 처리 UI 생략
           });
       }
 
@@ -3690,6 +3706,7 @@
     </script>
   </body>
   </html>
+
 
 
 
