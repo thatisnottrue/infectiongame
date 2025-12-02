@@ -3482,11 +3482,11 @@
       // =========================
       // ★ 게임 설명창(가이드) 기능
       // =========================
-function loadGuideSVG() {
+      function loadGuideSVG() {
         // 이미 로드되어 있으면 다시 로드하지 않음
         if (UI.guideSvgContainer.querySelector('svg')) return Promise.resolve();
 
-        return fetch("./assets/guide.svg")
+        return fetch("./assets/guide1.svg")
           .then(res => res.text())
           .then(svgText => {
             // 1. SVG 코드를 HTML에 삽입 (Inline SVG)
@@ -3596,6 +3596,7 @@ function loadGuideSVG() {
     </script>
   </body>
   </html>
+
 
 
 
