@@ -450,25 +450,6 @@
       <div class="quiz-backdrop"></div>
       
       <div class="guide-box" style="position: relative; z-index: 3001; max-width: 900px; width: 90%;">
-        
-        <button id="guideCloseBtn" style="
-          position: absolute; 
-          top: -15px; 
-          right: -15px; 
-          z-index: 3002; 
-          background: var(--accent); 
-          color: white; 
-          border: none; 
-          border-radius: 50%; 
-          width: 36px; 
-          height: 36px; 
-          font-weight: bold; 
-          font-size: 1.2rem;
-          cursor: pointer;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
-          X
-        </button>
-        
         <div id="guideSvgContainer" style="
           background: var(--panel-bg); 
           border-radius: 16px; 
@@ -3501,24 +3482,43 @@
       // =========================
       // ★ 게임 설명창(가이드) 기능
       // =========================
-      function loadGuideSVG() {
-        // 내용이 비어있거나 로딩 텍스트만 있을 때만 fetch
+function loadGuideSVG() {
+        // 이미 로드되어 있으면 다시 로드하지 않음
         if (UI.guideSvgContainer.querySelector('svg')) return Promise.resolve();
 
-        return fetch("./assets/guide1.svg")
+        return fetch("./assets/guide.svg")
           .then(res => res.text())
           .then(svgText => {
+            // 1. SVG 코드를 HTML에 삽입 (Inline SVG)
             UI.guideSvgContainer.innerHTML = svgText;
+            
             const svg = UI.guideSvgContainer.querySelector("svg");
             if (svg) {
               svg.style.width = "100%";
               svg.style.height = "auto";
               svg.style.display = "block";
+              
+              // ★ 2. 피그마에서 이름 지은 'guideCloseBtn' 찾기
+              // (피그마 레이어 이름은 SVG에서 id="..." 로 변환됩니다)
+              const internalCloseBtn = svg.querySelector("#guideCloseBtn");
+              
+              if (internalCloseBtn) {
+                // 마우스를 올렸을 때 손가락 모양으로 변하게 함
+                internalCloseBtn.style.cursor = "pointer";
+                
+                // 클릭하면 닫기 함수 실행
+                internalCloseBtn.addEventListener("click", (e) => {
+                  e.stopPropagation(); // 이벤트 버블링 방지
+                  closeGuideOverlay();
+                });
+                console.log("SVG 내부 닫기 버튼 연결 성공!");
+              } else {
+                console.warn("경고: SVG 파일 안에서 id='guideCloseBtn'을 찾을 수 없습니다. 피그마 레이어 이름을 확인하세요.");
+              }
             }
           })
           .catch(err => {
             console.error("가이드 로드 실패:", err);
-            UI.guideSvgContainer.textContent = "가이드 파일을 찾을 수 없습니다. (./assets/guide1.svg)";
           });
       }
 
@@ -3596,6 +3596,7 @@
     </script>
   </body>
   </html>
+
 
 
 
