@@ -446,6 +446,43 @@
         </div>
       </div>
 
+      <div id="guideOverlay" class="quiz-overlay" style="display:none; z-index: 3000;">
+      <div class="quiz-backdrop"></div>
+      
+      <div class="guide-box" style="position: relative; z-index: 3001; max-width: 900px; width: 90%;">
+        
+        <button id="guideCloseBtn" style="
+          position: absolute; 
+          top: -15px; 
+          right: -15px; 
+          z-index: 3002; 
+          background: var(--accent); 
+          color: white; 
+          border: none; 
+          border-radius: 50%; 
+          width: 36px; 
+          height: 36px; 
+          font-weight: bold; 
+          font-size: 1.2rem;
+          cursor: pointer;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+          X
+        </button>
+        
+        <div id="guideSvgContainer" style="
+          background: var(--panel-bg); 
+          border-radius: 16px; 
+          overflow: hidden; 
+          display: flex; 
+          justify-content: center; 
+          align-items: center;
+          box-shadow: var(--shadow-soft);
+          padding: 10px;
+          min-height: 300px;">
+          <span style="color:gray;">가이드 이미지를 로딩 중입니다...</span>
+        </div>
+      </div>
+
       <footer>
         ※ 이 버전은 SVG 맵(169타일) 위에서 플레이어/시민을 시각화하고, 감염 확산 패턴과 연구소·백신 개발을 관찰하기 위한 프로토타입입니다.
       </footer>
@@ -701,7 +738,10 @@
         quizOverlay: document.getElementById("quizOverlay"),
         quizQuestionText: document.getElementById("quizQuestionText"),
         quizChoices: document.getElementById("quizChoices"),
-        quizCloseBtn: document.getElementById("quizCloseBtn")
+        quizCloseBtn: document.getElementById("quizCloseBtn"),
+        guideOverlay: document.getElementById("guideOverlay"),
+        guideSvgContainer: document.getElementById("guideSvgContainer"),
+        guideCloseBtn: document.getElementById("guideCloseBtn")
       };
       // ★★★ UI 객체 끝 ★★★
 
@@ -3369,6 +3409,8 @@
         subscribeLabQuiz();
 
         alert(`방에 입장했습니다! (ID: ${roomId})`);
+
+        openGuideOverlay();
       }
 
       function subscribeRoomState() {
@@ -3460,6 +3502,55 @@
         });
       }
 
+      // =========================
+      // ★ 게임 설명창(가이드) 기능
+      // =========================
+      function loadGuideSVG() {
+        // 내용이 비어있거나 로딩 텍스트만 있을 때만 fetch
+        if (UI.guideSvgContainer.querySelector('svg')) return Promise.resolve();
+
+        return fetch("./assets/guide1.svg")
+          .then(res => res.text())
+          .then(svgText => {
+            UI.guideSvgContainer.innerHTML = svgText;
+            const svg = UI.guideSvgContainer.querySelector("svg");
+            if (svg) {
+              svg.style.width = "100%";
+              svg.style.height = "auto";
+              svg.style.display = "block";
+            }
+          })
+          .catch(err => {
+            console.error("가이드 로드 실패:", err);
+            UI.guideSvgContainer.textContent = "가이드 파일을 찾을 수 없습니다. (./assets/guide1.svg)";
+          });
+      }
+
+      function openGuideOverlay() {
+        if (!UI.guideOverlay) return;
+        loadGuideSVG().then(() => {
+          UI.guideOverlay.classList.add("active");
+          UI.guideOverlay.style.display = "flex";
+        });
+      }
+
+      function closeGuideOverlay() {
+        if (!UI.guideOverlay) return;
+        UI.guideOverlay.classList.remove("active");
+        UI.guideOverlay.style.display = "none";
+      }
+
+      // 닫기 버튼 이벤트 연결
+      if (UI.guideCloseBtn) {
+        UI.guideCloseBtn.addEventListener("click", closeGuideOverlay);
+      }
+      // 배경 클릭 시 닫기
+      if (UI.guideOverlay) {
+        const backdrop = UI.guideOverlay.querySelector(".quiz-backdrop");
+        if(backdrop) backdrop.addEventListener("click", closeGuideOverlay);
+      }
+
+      // -----------------------------------------------------------
       
       async function init() {
 
@@ -3509,6 +3600,7 @@
     </script>
   </body>
   </html>
+
 
 
 
